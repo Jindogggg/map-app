@@ -9,11 +9,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 12px; }
 .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-width: 480px; width: 100%; margin: 0 auto; padding: 16px 14px 20px; }
-
-/* ===== СЛУЖЕБНЫЕ ЭЛЕМЕНТЫ — только для админов ===== */
 .admin-only { display: none; }
 .admin-mode .admin-only { display: block; }
-
 #id-indicator { padding: 10px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 #id-indicator.wait { background: #fff8e1; color: #8a6d00; border: 2px dashed #f0a500; }
 #id-indicator.ok { background: #e8f5e9; color: #2e7d32; border: 2px solid #43a047; }
@@ -24,7 +21,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #diag .info { color: #79c0ff; }
 #diag .warn { color: #ffa657; }
 #diag .new { color: #d2a8ff; font-weight: bold; }
-
 #address-input { width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; box-sizing: border-box; }
 #address-input:focus { border-color: #2a5298; }
 #address-input.warning { border-color: #f0a500; }
@@ -50,7 +46,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="admin-only wait">⏳ Ждём ID и город...</div>
-<div id="diag" class="admin-only">=== v21 ===</div>
+<div id="diag" class="admin-only">=== v22 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="address-warning"></div>
 <div id="map"></div>
@@ -66,12 +62,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 <script>
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
-var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
 var DEFAULT_USER_ID = '0000000000';
 var DEFAULT_CITY = 'Краснодар';
 
-// ===== ID АДМИНОВ (видят логи и служебную информацию) =====
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
 var IMPORTANT_TYPES = [
@@ -111,7 +105,6 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 diag.innerHTML = '';
-diagLog('v21 старт', 'info');
 
 var tgUserId = '';
 var selectedCity = '';
@@ -195,6 +188,10 @@ function requestCityArea() {
         '&format=json&results=1&lang=ru_RU&kind=area&geocode=' + encodeURIComponent(selectedCity);
 
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+        if (!data || !data.response || !data.response.GeoObjectCollection) {
+            diagLog('[0] ❌ Нет response', 'err');
+            return;
+        }
         var m = data.response.GeoObjectCollection.featureMember;
         if (!m || m.length === 0) { diagLog('[0] area не найдено', 'warn'); return; }
         var comps = m[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
@@ -301,6 +298,11 @@ function findOrient(coords, callback) {
             '&format=json&results=1&lang=ru_RU&kind=' + item.kind + '&geocode=' + lon + ',' + lat;
 
         fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+            if (!data || !data.response || !data.response.GeoObjectCollection) {
+                diagLog('   ❌ Нет response', 'err');
+                tryKind(idx + 1);
+                return;
+            }
             var m = data.response.GeoObjectCollection.featureMember;
             if (!m || m.length === 0) {
                 diagLog('   пусто, идём дальше', 'warn');
@@ -347,6 +349,9 @@ function findOrient(coords, callback) {
 }
 
 function handleGeocoderData(data, baseJson, onDone) {
+    if (!data || !data.response || !data.response.GeoObjectCollection) {
+        onDone(null, 'Нет данных'); return;
+    }
     var members = data.response.GeoObjectCollection.featureMember;
     if (!members || members.length === 0) { onDone(null, 'Нет данных'); return; }
 
@@ -369,6 +374,7 @@ function handleGeocoderData(data, baseJson, onDone) {
     var coords = baseJson.coords;
     var link = baseJson.link;
 
+    // ===== 0 =====
     diagLog('=== [0] locality = город? ===', 'new');
     var localityIsCity = false;
     for (var i = 0; i < localityArr.length; i++) {
@@ -377,8 +383,10 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('результат: ' + (localityIsCity ? 'ДА' : 'НЕТ'), localityIsCity ? 'ok' : 'warn');
 
     if (localityIsCity) {
+        // ===== 0.1 =====
         diagLog('=== [0.1] district от Яндекса? ===', 'new');
         if (districtArr.length > 0) {
+            // 0.1.1
             diagLog('[0.1.1] district есть → сборка', 'ok');
             var values = districtArr.slice();
             var district = buildDistrict(values);
@@ -390,6 +398,7 @@ function handleGeocoderData(data, baseJson, onDone) {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
             }
         } else {
+            // 0.1.2
             diagLog('[0.1.2] district пусто → проверка точности', 'warn');
             if (houseArr.length > 0 && streetArr.length > 0) {
                 diagLog('   house + street есть → поиск ориентира', 'ok');
@@ -409,6 +418,7 @@ function handleGeocoderData(data, baseJson, onDone) {
         return;
     }
 
+    // ===== 0.2 =====
     diagLog('=== [0.2] area совпадает? ===', 'new');
     var areaMatches = false;
     if (cityArea) {
@@ -419,10 +429,33 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('результат: ' + (areaMatches ? 'ДА' : 'НЕТ'), areaMatches ? 'ok' : 'warn');
 
     if (!areaMatches) {
-        finishFail('Адрес далеко от выбранного города. Проверьте.', onDone);
+        // ===== 0.2.2 =====
+        diagLog('=== [0.2.2] вне округа ===', 'new');
+        diagLog('Шаг 1. Точность: street + house?', 'info');
+        if (houseArr.length === 0 || streetArr.length === 0) {
+            finishFail('Введите точный адрес (улица и номер дома).', onDone);
+            return;
+        }
+        diagLog('   ✅ точно', 'ok');
+
+        diagLog('Шаг 2. locality (первое значение)', 'info');
+        var localityStr = localityArr.length > 0 ? localityArr[0] : '';
+        diagLog('   locality = «' + localityStr + '»', 'ok');
+
+        diagLog('Шаг 3. district — собираем только из district Яндекса', 'info');
+        var district = [];
+        if (districtArr.length > 0) {
+            district = buildDistrict(districtArr.slice());
+            diagLog('   district = [' + district.join(', ') + ']', 'ok');
+        } else {
+            diagLog('   district Яндекса пусто → игнорируем', 'warn');
+        }
+
+        finishSuccessOutside(district, coords, link, streetArr, houseArr, precision, localityStr, onDone);
         return;
     }
 
+    // ===== 0.2.1 =====
     diagLog('=== [0.2.1] district есть? ===', 'new');
     var localityNonCity = [];
     localityArr.forEach(function(v) {
@@ -432,6 +465,7 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('district есть: ' + hasDistrict, hasDistrict ? 'ok' : 'warn');
 
     if (hasDistrict) {
+        // 0.2.1.1
         diagLog('[0.2.1.1] district есть → сборка', 'ok');
         var values = [];
         localityNonCity.forEach(function(v) { values.push(v); });
@@ -445,6 +479,7 @@ function handleGeocoderData(data, baseJson, onDone) {
             finishFail('Введите точный адрес (улица и номер дома).', onDone);
         }
     } else {
+        // 0.2.1.2
         diagLog('[0.2.1.2] district пусто → locality как district', 'warn');
         if (localityNonCity.length === 0) {
             finishFail('Не удалось определить ориентир.', onDone);
@@ -473,6 +508,22 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
         link: link
     };
     showWarning('✅ Адрес точный: ' + district.join(', '), 'ok');
+    onDone(result, null);
+}
+
+function finishSuccessOutside(district, coords, link, street, house, precision, localityStr, onDone) {
+    var result = {
+        coords: coords,
+        in_city: false,
+        locality: localityStr,
+        district: district.join(', '),
+        street: street,
+        house: house,
+        is_exact: true,
+        precision: precision,
+        link: link
+    };
+    showWarning('✅ Адрес точный (вне города): ' + localityStr, 'ok');
     onDone(result, null);
 }
 
