@@ -13,11 +13,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #id-indicator.wait { background: #fff8e1; color: #8a6d00; border: 2px dashed #f0a500; }
 #id-indicator.ok { background: #e8f5e9; color: #2e7d32; border: 2px solid #43a047; }
 #id-indicator.fail { background: #ffebee; color: #c62828; border: 2px solid #e53935; }
-#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; }
+#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
 #diag .ok { color: #7ee787; }
 #diag .err { color: #ff7b72; }
 #diag .info { color: #79c0ff; }
 #diag .warn { color: #ffa657; }
+#diag .new { color: #d2a8ff; font-weight: bold; }
 #address-input { width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; box-sizing: border-box; }
 #address-input:focus { border-color: #2a5298; }
 #map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; margin: 10px 0; background: #eef2f6; }
@@ -35,7 +36,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="wait">⏳ Ждём ID пользователя от мини-приложения...</div>
-<div id="diag">=== СТАРТ ===</div>
+<div id="diag">=== СТАРТ ДИАГНОСТИКИ v2 (Image Beacon) ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map"></div>
 <div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
@@ -55,7 +56,38 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 diag.innerHTML = '';
-diagLog('0. Страница загружена', 'info');
+diagLog('0. Страница загружена (v2)', 'info');
+diagLog('0.1. URL: ' + window.location.href);
+
+var scripts = document.getElementsByTagName('script');
+for (var i = 0; i < scripts.length; i++) {
+    if (scripts[i].src && scripts[i].src.indexOf('api-maps.yandex.ru') !== -1) {
+        diagLog('0.2. Яндекс.Карты подключены', 'ok');
+    }
+}
+
+window.addEventListener('error', function(e) {
+    diagLog('❌ JS-ошибка: ' + (e.message || 'неизвестно'), 'err');
+});
+
+// === ПЕРЕХВАТ СЕТЕВЫХ ЗАПРОСОВ (для диагностики) ===
+var originalFetch = window.fetch;
+window.fetch = function() {
+    var url = arguments[0];
+    diagLog('🌐 fetch → ' + String(url).substring(0, 80) + '...', 'info');
+    return originalFetch.apply(this, arguments);
+};
+
+var origImageSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+Object.defineProperty(HTMLImageElement.prototype, 'src', {
+    set: function(value) {
+        diagLog('🖼️ Image.src → ' + String(value).substring(0, 120) + '...', 'new');
+        return origImageSrc.set.call(this, value);
+    },
+    get: function() {
+        return origImageSrc.get.call(this);
+    }
+});
 
 var tgUserId = '';
 var selectedAddress = '';
@@ -78,37 +110,42 @@ setTimeout(function () {
     if (!tgUserId) {
         idIndicator.className = 'fail';
         idIndicator.innerHTML = '❌ ID не получен за 5 секунд';
-        diagLog('⚠️ ID не получен', 'warn');
+        diagLog('⚠️ ID не получен за 5 сек', 'warn');
     }
 }, 5000);
 
-// === СОХРАНЕНИЕ ЧЕРЕЗ IMAGE BEACON (GET-запрос) ===
-function saveVariable(variableName, value) {
-    var url = PUZZLEBOT_API + 
+// === СОХРАНЕНИЕ ЧЕРЕЗ IMAGE BEACON ===
+function saveVariableImage(variableName, value) {
+    var url = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
         '&method=variableChange' +
         '&variable=' + encodeURIComponent(variableName) +
         '&expression=' + encodeURIComponent(value) +
         '&user_id=' + encodeURIComponent(tgUserId);
 
-    diagLog('💾 Сохраняем ' + variableName, 'info');
-    diagLog('   URL: ' + url);
-    diagLog('   user_id в URL: ' + tgUserId, tgUserId ? 'ok' : 'err');
+    diagLog('💾 [IMAGE] ' + variableName, 'new');
+    diagLog('   Длина URL: ' + url.length + ' символов', 'info');
 
-    // Отправляем через картинку — браузер думает, что грузит изображение
     var img = new Image();
     img.onload = function() {
-        diagLog('   ✅ Запрос ушёл (' + variableName + ')', 'ok');
+        diagLog('   ✅ image.onload (' + variableName + ')', 'ok');
     };
     img.onerror = function() {
-        diagLog('   ⚠️ Запрос ушёл с ошибкой (это нормально, PuzzleBot вернул не картинку)', 'warn');
+        diagLog('   ⚠️ image.onerror (' + variableName + ') — скорее всего это норм (PuzzleBot вернул не картинку)', 'warn');
     };
     img.src = url;
+}
 
-    // Для надёжности ещё и через fetch с no-cors
-    try {
-        fetch(url, { mode: 'no-cors' });
-    } catch (e) {}
+// === СТАРЫЙ СПОСОБ: sendBeacon (оставляем как резерв) ===
+function saveVariableBeacon(variableName, value) {
+    var formData = new FormData();
+    formData.append('token', PUZZLEBOT_TOKEN);
+    formData.append('method', 'variableChange');
+    formData.append('variable', variableName);
+    formData.append('expression', value);
+    formData.append('user_id', tgUserId);
+    var ok = navigator.sendBeacon(PUZZLEBOT_API, formData);
+    diagLog('💾 [BEACON] ' + variableName + ' → ' + (ok ? 'отправлено ✅' : 'отклонено ❌'), ok ? 'ok' : 'err');
 }
 
 ymaps.ready(function () {
@@ -146,7 +183,8 @@ ymaps.ready(function () {
         sendBtn.disabled = false;
         statusEl.textContent = '';
 
-        diagLog('✅ Выбран адрес: ' + selectedAddress, 'ok');
+        diagLog('✅ Выбран адрес: ' + selectedAddress.substring(0, 50) + '...', 'ok');
+        diagLog('📏 Адрес: ' + selectedAddress.length + ' символов, ссылка: ' + selectedLink.length + ' символов', 'info');
 
         ymaps.geocode(value, { results: 1 }).then(function (res) {
             var firstGeoObject = res.geoObjects.get(0);
@@ -159,14 +197,11 @@ ymaps.ready(function () {
     });
 
     sendBtn.addEventListener('click', function () {
-        diagLog('🖱️ Нажата кнопка Сохранить', 'info');
+        diagLog('🖱️ Нажата Сохранить', 'info');
         statusEl.className = 'status';
         statusEl.textContent = '';
 
-        if (!selectedAddress || !selectedLink) {
-            diagLog('⚠️ Адрес не выбран', 'warn');
-            return;
-        }
+        if (!selectedAddress || !selectedLink) return;
 
         if (!tgUserId) {
             statusEl.className = 'status err';
@@ -175,15 +210,21 @@ ymaps.ready(function () {
             return;
         }
 
-        saveVariable('ADD_APP_ADDRESS', selectedAddress);
-        saveVariable('ADD_APP_LINK', selectedLink);
+        diagLog('=== ОТПРАВКА ===', 'new');
+
+        // Отправляем ОБОИМИ способами — какой-нибудь да сработает
+        saveVariableImage('ADD_APP_ADDRESS', selectedAddress);
+        saveVariableImage('ADD_APP_LINK', selectedLink);
+
+        saveVariableBeacon('ADD_APP_ADDRESS', selectedAddress);
+        saveVariableBeacon('ADD_APP_LINK', selectedLink);
 
         statusEl.className = 'status ok';
         statusEl.textContent = '✅ Адрес сохранён!';
-        diagLog('=== СОХРАНЕНИЕ ЗАВЕРШЕНО ===', 'ok');
+        diagLog('=== ГОТОВО ===', 'ok');
     });
 
-    diagLog('3. Готово. Введите адрес и нажмите Сохранить.', 'warn');
+    diagLog('3. Готово. Выберите адрес.', 'warn');
 });
 </script>
 </body>
