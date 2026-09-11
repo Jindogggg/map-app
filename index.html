@@ -28,6 +28,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .info-value.empty { color: #8a9aa8; font-weight: 400; font-style: italic; }
 .btn-primary { background: #1e3c72; color: #fff; border: none; border-radius: 60px; padding: 13px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(30,60,114,0.25); margin-top: 10px; }
 .btn-primary:disabled { background: #c0cbd9; box-shadow: none; cursor: not-allowed; }
+
+.json-block { margin-top: 12px; padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
+.json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
+#json-output { width: 100%; height: 300px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
+.btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
+.btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
+.copy-hint { font-size: 11px; color: #555; margin-top: 6px; text-align: center; line-height: 1.4; }
+
 .status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
 .status.ok { color: #2e7d32; font-weight: 600; }
 .status.err { color: #c62828; font-weight: 600; }
@@ -36,12 +44,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="wait">⏳ Ждём ID пользователя от мини-приложения...</div>
-<div id="diag">=== СТАРТ ДИАГНОСТИКИ v2 (Image Beacon) ===</div>
+<div id="diag">=== СТАРТ v7 (все компоненты) ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map"></div>
 <div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
 <div class="info-row"><span class="info-label">Ссылка:</span><span class="info-value empty" id="link-value">не выбрана</span></div>
-<button class="btn-primary" id="send-btn" disabled>Сохранить</button>
+
+<div class="json-block">
+    <div class="json-block-title">📋 JSON со всеми компонентами адреса:</div>
+    <textarea id="json-output" readonly placeholder="Здесь появится JSON после выбора адреса..."></textarea>
+    <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
+    <div class="copy-hint">Выберите адрес → нажмите кнопку → вставьте в форму PuzzleBot</div>
+</div>
+
+<button class="btn-primary" id="send-btn" disabled>Сохранить (старый способ)</button>
 <div class="status" id="status"></div>
 </div>
 
@@ -56,46 +72,19 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 diag.innerHTML = '';
-diagLog('0. Страница загружена (v2)', 'info');
+diagLog('0. Страница загружена (v7)', 'info');
 diagLog('0.1. URL: ' + window.location.href);
-
-var scripts = document.getElementsByTagName('script');
-for (var i = 0; i < scripts.length; i++) {
-    if (scripts[i].src && scripts[i].src.indexOf('api-maps.yandex.ru') !== -1) {
-        diagLog('0.2. Яндекс.Карты подключены', 'ok');
-    }
-}
-
-window.addEventListener('error', function(e) {
-    diagLog('❌ JS-ошибка: ' + (e.message || 'неизвестно'), 'err');
-});
-
-// === ПЕРЕХВАТ СЕТЕВЫХ ЗАПРОСОВ (для диагностики) ===
-var originalFetch = window.fetch;
-window.fetch = function() {
-    var url = arguments[0];
-    diagLog('🌐 fetch → ' + String(url).substring(0, 80) + '...', 'info');
-    return originalFetch.apply(this, arguments);
-};
-
-var origImageSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
-Object.defineProperty(HTMLImageElement.prototype, 'src', {
-    set: function(value) {
-        diagLog('🖼️ Image.src → ' + String(value).substring(0, 120) + '...', 'new');
-        return origImageSrc.set.call(this, value);
-    },
-    get: function() {
-        return origImageSrc.get.call(this);
-    }
-});
 
 var tgUserId = '';
 var selectedAddress = '';
 var selectedLink = '';
+var selectedCoords = null;
 var myMap = null;
 var myPlacemark = null;
 
 var idIndicator = document.getElementById('id-indicator');
+var jsonOutput = document.getElementById('json-output');
+var copyBtn = document.getElementById('copy-btn');
 
 window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'TG_USER_ID') {
@@ -114,7 +103,6 @@ setTimeout(function () {
     }
 }, 5000);
 
-// === СОХРАНЕНИЕ ЧЕРЕЗ IMAGE BEACON ===
 function saveVariableImage(variableName, value) {
     var url = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
@@ -122,31 +110,87 @@ function saveVariableImage(variableName, value) {
         '&variable=' + encodeURIComponent(variableName) +
         '&expression=' + encodeURIComponent(value) +
         '&user_id=' + encodeURIComponent(tgUserId);
-
     diagLog('💾 [IMAGE] ' + variableName, 'new');
-    diagLog('   Длина URL: ' + url.length + ' символов', 'info');
-
     var img = new Image();
-    img.onload = function() {
-        diagLog('   ✅ image.onload (' + variableName + ')', 'ok');
-    };
-    img.onerror = function() {
-        diagLog('   ⚠️ image.onerror (' + variableName + ') — скорее всего это норм (PuzzleBot вернул не картинку)', 'warn');
-    };
+    img.onload = function() { diagLog('   ✅ onload', 'ok'); };
+    img.onerror = function() { diagLog('   ⚠️ onerror — норм', 'warn'); };
     img.src = url;
 }
 
-// === СТАРЫЙ СПОСОБ: sendBeacon (оставляем как резерв) ===
-function saveVariableBeacon(variableName, value) {
-    var formData = new FormData();
-    formData.append('token', PUZZLEBOT_TOKEN);
-    formData.append('method', 'variableChange');
-    formData.append('variable', variableName);
-    formData.append('expression', value);
-    formData.append('user_id', tgUserId);
-    var ok = navigator.sendBeacon(PUZZLEBOT_API, formData);
-    diagLog('💾 [BEACON] ' + variableName + ' → ' + (ok ? 'отправлено ✅' : 'отклонено ❌'), ok ? 'ok' : 'err');
+// === Формируем JSON со ВСЕМИ компонентами ===
+function buildJSONFromGeoObject(geoObject, coords) {
+    var result = {
+        full_address: '',
+        coords: coords || [],
+        // Все компоненты в исходном виде
+        all_components: [],
+        // Группировка по типу (kind)
+        country: [],
+        region: [],
+        province: [],
+        area: [],
+        locality: [],
+        district: [],
+        street: [],
+        house: [],
+        entrance: [],
+        level: [],
+        apartment: [],
+        route: [],
+        station: [],
+        metroStation: [],
+        railwayStation: [],
+        vegetation: [],
+        hydro: [],
+        airport: [],
+        other: []
+    };
+
+    try {
+        var meta = geoObject.metaDataProperty.GeocoderMetaData;
+        result.full_address = meta.text || '';
+
+        var components = meta.Address && meta.Address.Components ? meta.Address.Components : [];
+        diagLog('🔍 Найдено компонентов: ' + components.length, 'info');
+
+        components.forEach(function(c) {
+            diagLog('   ' + c.kind + ': ' + c.name, 'info');
+
+            // В исходный массив (все подряд)
+            result.all_components.push({
+                kind: c.kind,
+                name: c.name
+            });
+
+            // В группу по типу
+            if (result.hasOwnProperty(c.kind)) {
+                result[c.kind].push(c.name);
+            } else {
+                // Неизвестный тип — в other
+                result.other.push(c.name + ' [kind: ' + c.kind + ']');
+            }
+        });
+
+    } catch (e) {
+        diagLog('⚠️ Ошибка разбора: ' + e.message, 'warn');
+    }
+
+    return result;
 }
+
+copyBtn.addEventListener('click', function() {
+    if (!jsonOutput.value) return;
+    jsonOutput.select();
+    jsonOutput.setSelectionRange(0, 999999);
+    try {
+        document.execCommand('copy');
+        diagLog('📋 JSON скопирован', 'ok');
+        copyBtn.textContent = '✅ Скопировано!';
+        setTimeout(function() { copyBtn.textContent = '📋 Скопировать JSON'; }, 2000);
+    } catch (e) {
+        diagLog('❌ Не удалось скопировать: ' + e.message, 'err');
+    }
+});
 
 ymaps.ready(function () {
     diagLog('1. ymaps готов ✅', 'ok');
@@ -183,45 +227,48 @@ ymaps.ready(function () {
         sendBtn.disabled = false;
         statusEl.textContent = '';
 
-        diagLog('✅ Выбран адрес: ' + selectedAddress.substring(0, 50) + '...', 'ok');
-        diagLog('📏 Адрес: ' + selectedAddress.length + ' символов, ссылка: ' + selectedLink.length + ' символов', 'info');
+        diagLog('✅ Выбран адрес: ' + selectedAddress, 'ok');
+        jsonOutput.value = 'Загрузка данных...';
 
         ymaps.geocode(value, { results: 1 }).then(function (res) {
             var firstGeoObject = res.geoObjects.get(0);
-            if (firstGeoObject) {
-                var coords = firstGeoObject.geometry.getCoordinates();
-                myMap.setCenter(coords, 16);
-                myPlacemark.geometry.setCoordinates(coords);
+            if (!firstGeoObject) {
+                diagLog('❌ Геокодер не вернул результат', 'err');
+                jsonOutput.value = 'Геокодер не вернул результат';
+                return;
             }
+
+            var coords = firstGeoObject.geometry.getCoordinates();
+            selectedCoords = coords;
+            myMap.setCenter(coords, 16);
+            myPlacemark.geometry.setCoordinates(coords);
+            diagLog('   Координаты: ' + coords, 'info');
+
+            var jsonData = buildJSONFromGeoObject(firstGeoObject, coords);
+            var pretty = JSON.stringify(jsonData, null, 2);
+            jsonOutput.value = pretty;
+            copyBtn.disabled = false;
+            diagLog('✅ JSON сформирован (' + pretty.length + ' символов)', 'ok');
+        }).catch(function(err) {
+            diagLog('❌ Ошибка геокодера: ' + err.message, 'err');
+            jsonOutput.value = 'Ошибка: ' + err.message;
         });
     });
 
     sendBtn.addEventListener('click', function () {
-        diagLog('🖱️ Нажата Сохранить', 'info');
+        diagLog('🖱️ Нажата Сохранить (старый способ)', 'info');
         statusEl.className = 'status';
         statusEl.textContent = '';
-
         if (!selectedAddress || !selectedLink) return;
-
         if (!tgUserId) {
             statusEl.className = 'status err';
             statusEl.textContent = 'ID не получен';
-            diagLog('❌ Нет user_id', 'err');
             return;
         }
-
-        diagLog('=== ОТПРАВКА ===', 'new');
-
-        // Отправляем ОБОИМИ способами — какой-нибудь да сработает
         saveVariableImage('ADD_APP_ADDRESS', selectedAddress);
         saveVariableImage('ADD_APP_LINK', selectedLink);
-
-        saveVariableBeacon('ADD_APP_ADDRESS', selectedAddress);
-        saveVariableBeacon('ADD_APP_LINK', selectedLink);
-
         statusEl.className = 'status ok';
-        statusEl.textContent = '✅ Адрес сохранён!';
-        diagLog('=== ГОТОВО ===', 'ok');
+        statusEl.textContent = '✅ Отправлено (старый способ)';
     });
 
     diagLog('3. Готово. Выберите адрес.', 'warn');
