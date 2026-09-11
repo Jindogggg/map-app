@@ -31,7 +31,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 .json-block { margin-top: 12px; padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
 .json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
-#json-output { width: 100%; height: 300px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
+#json-output { width: 100%; height: 350px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
 .copy-hint { font-size: 11px; color: #555; margin-top: 6px; text-align: center; line-height: 1.4; }
@@ -44,14 +44,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="wait">⏳ Ждём ID пользователя от мини-приложения...</div>
-<div id="diag">=== СТАРТ v7 (все компоненты) ===</div>
+<div id="diag">=== СТАРТ v8 (ymaps.geocode) ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map"></div>
 <div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
 <div class="info-row"><span class="info-label">Ссылка:</span><span class="info-value empty" id="link-value">не выбрана</span></div>
 
 <div class="json-block">
-    <div class="json-block-title">📋 JSON со всеми компонентами адреса:</div>
+    <div class="json-block-title">📋 JSON (ymaps.geocode):</div>
     <textarea id="json-output" readonly placeholder="Здесь появится JSON после выбора адреса..."></textarea>
     <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
     <div class="copy-hint">Выберите адрес → нажмите кнопку → вставьте в форму PuzzleBot</div>
@@ -72,8 +72,7 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 diag.innerHTML = '';
-diagLog('0. Страница загружена (v7)', 'info');
-diagLog('0.1. URL: ' + window.location.href);
+diagLog('0. Страница загружена (v8)', 'info');
 
 var tgUserId = '';
 var selectedAddress = '';
@@ -117,62 +116,70 @@ function saveVariableImage(variableName, value) {
     img.src = url;
 }
 
-// === Формируем JSON со ВСЕМИ компонентами ===
+function safeCall(obj, method) {
+    try {
+        if (typeof obj[method] === 'function') {
+            var res = obj[method]();
+            if (Array.isArray(res)) return res;
+            return res ? [res] : [];
+        }
+    } catch (e) {
+        return ['[ошибка: ' + e.message + ']'];
+    }
+    return [];
+}
+
 function buildJSONFromGeoObject(geoObject, coords) {
     var result = {
         full_address: '',
         coords: coords || [],
-        // Все компоненты в исходном виде
-        all_components: [],
-        // Группировка по типу (kind)
-        country: [],
-        region: [],
-        province: [],
-        area: [],
-        locality: [],
-        district: [],
-        street: [],
-        house: [],
-        entrance: [],
-        level: [],
-        apartment: [],
-        route: [],
-        station: [],
-        metroStation: [],
-        railwayStation: [],
-        vegetation: [],
-        hydro: [],
-        airport: [],
-        other: []
+        address_line: safeCall(geoObject, 'getAddressLine'),
+        country: safeCall(geoObject, 'getCountry'),
+        administrative_areas: safeCall(geoObject, 'getAdministrativeAreas'),
+        localities: safeCall(geoObject, 'getLocalities'),
+        thoroughfare: safeCall(geoObject, 'getThoroughfare'),
+        premise_number: safeCall(geoObject, 'getPremiseNumber'),
+        meta_dump: null,
+        all_components: []
     };
 
     try {
-        var meta = geoObject.metaDataProperty.GeocoderMetaData;
-        result.full_address = meta.text || '';
-
-        var components = meta.Address && meta.Address.Components ? meta.Address.Components : [];
-        diagLog('🔍 Найдено компонентов: ' + components.length, 'info');
-
-        components.forEach(function(c) {
-            diagLog('   ' + c.kind + ': ' + c.name, 'info');
-
-            // В исходный массив (все подряд)
-            result.all_components.push({
-                kind: c.kind,
-                name: c.name
-            });
-
-            // В группу по типу
-            if (result.hasOwnProperty(c.kind)) {
-                result[c.kind].push(c.name);
-            } else {
-                // Неизвестный тип — в other
-                result.other.push(c.name + ' [kind: ' + c.kind + ']');
-            }
-        });
-
+        result.full_address = geoObject.getAddressLine ? geoObject.getAddressLine() : '';
     } catch (e) {
-        diagLog('⚠️ Ошибка разбора: ' + e.message, 'warn');
+        result.full_address = '[ошибка: ' + e.message + ']';
+    }
+
+    try {
+        if (geoObject.metaDataProperty && geoObject.metaDataProperty.GeocoderMetaData) {
+            var meta = geoObject.metaDataProperty.GeocoderMetaData;
+            diagLog('🔍 GeocoderMetaData найден', 'ok');
+            diagLog('   text: ' + (meta.text || '(пусто)'), 'info');
+
+            result.meta_dump = {
+                kind: meta.kind || '',
+                text: meta.text || '',
+                precision: meta.precision || '',
+                Address: meta.Address ? {
+                    country_code: meta.Address.country_code || '',
+                    formatted: meta.Address.formatted || ''
+                } : null
+            };
+
+            if (meta.Address && meta.Address.Components) {
+                var components = meta.Address.Components;
+                diagLog('   Компонентов: ' + components.length, 'info');
+                components.forEach(function(c) {
+                    diagLog('     ' + c.kind + ': ' + c.name, 'info');
+                    result.all_components.push({ kind: c.kind, name: c.name });
+                });
+            } else {
+                diagLog('   Address.Components ОТСУТСТВУЕТ', 'err');
+            }
+        } else {
+            diagLog('⚠️ GeocoderMetaData НЕ найден', 'warn');
+        }
+    } catch (e) {
+        diagLog('⚠️ Ошибка meta: ' + e.message, 'warn');
     }
 
     return result;
@@ -243,6 +250,14 @@ ymaps.ready(function () {
             myMap.setCenter(coords, 16);
             myPlacemark.geometry.setCoordinates(coords);
             diagLog('   Координаты: ' + coords, 'info');
+
+            diagLog('=== МЕТОДЫ GEOOBJECT ===', 'new');
+            diagLog('   getAddressLine(): ' + JSON.stringify(safeCall(firstGeoObject, 'getAddressLine')), 'info');
+            diagLog('   getCountry(): ' + JSON.stringify(safeCall(firstGeoObject, 'getCountry')), 'info');
+            diagLog('   getAdministrativeAreas(): ' + JSON.stringify(safeCall(firstGeoObject, 'getAdministrativeAreas')), 'info');
+            diagLog('   getLocalities(): ' + JSON.stringify(safeCall(firstGeoObject, 'getLocalities')), 'info');
+            diagLog('   getThoroughfare(): ' + JSON.stringify(safeCall(firstGeoObject, 'getThoroughfare')), 'info');
+            diagLog('   getPremiseNumber(): ' + JSON.stringify(safeCall(firstGeoObject, 'getPremiseNumber')), 'info');
 
             var jsonData = buildJSONFromGeoObject(firstGeoObject, coords);
             var pretty = JSON.stringify(jsonData, null, 2);
