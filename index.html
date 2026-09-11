@@ -35,7 +35,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="wait">⏳ Ждём ID пользователя от мини-приложения...</div>
-<div id="diag">=== СТАРТ ДИАГНОСТИКИ ===</div>
+<div id="diag">=== СТАРТ ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map"></div>
 <div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
@@ -54,72 +54,9 @@ function diagLog(text, cls) {
     diag.innerHTML += '[' + time + '] ' + (cls ? '<span class="' + cls + '">' + text + '</span>' : text) + '\n';
     diag.scrollTop = diag.scrollHeight;
 }
-
+diag.innerHTML = '';
 diagLog('0. Страница загружена', 'info');
-diagLog('0.1. URL страницы: ' + window.location.href);
 
-// Проверяем, есть ли suggest_apikey в подключенном скрипте
-var scripts = document.getElementsByTagName('script');
-for (var i = 0; i < scripts.length; i++) {
-    if (scripts[i].src && scripts[i].src.indexOf('api-maps.yandex.ru') !== -1) {
-        diagLog('0.2. URL скрипта Яндекс.Карт:');
-        diagLog('     ' + scripts[i].src);
-        if (scripts[i].src.indexOf('suggest_apikey') !== -1) {
-            diagLog('0.3. suggest_apikey присутствует в URL ✅', 'ok');
-        } else {
-            diagLog('0.3. suggest_apikey ОТСУТСТВУЕТ ❌', 'err');
-        }
-    }
-}
-
-// Ловим все ошибки на странице
-window.addEventListener('error', function(e) {
-    diagLog('❌ JS-ошибка: ' + (e.message || 'неизвестно') + ' | ' + (e.filename || ''), 'err');
-});
-
-// Ловим ошибки загрузки ресурсов (скрипты, картинки и т.д.)
-window.addEventListener('error', function(e) {
-    if (e.target && e.target.tagName === 'SCRIPT') {
-        diagLog('❌ Не загрузился скрипт: ' + e.target.src, 'err');
-    }
-}, true);
-
-// Перехватываем fetch и XHR, чтобы видеть сетевые запросы
-var originalFetch = window.fetch;
-window.fetch = function() {
-    var url = arguments[0];
-    diagLog('🌐 fetch → ' + url, 'info');
-    return originalFetch.apply(this, arguments).then(function(resp) {
-        diagLog('🌐 fetch ← ' + resp.status + ' ' + url, resp.ok ? 'ok' : 'err');
-        return resp;
-    }).catch(function(err) {
-        diagLog('❌ fetch ошибка: ' + err.message, 'err');
-        throw err;
-    });
-};
-
-var originalXHROpen = XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open = function(method, url) {
-    diagLog('🌐 XHR ' + method + ' → ' + url, 'info');
-    this.addEventListener('load', function() {
-        diagLog('🌐 XHR ← ' + this.status + ' ' + url, this.status === 200 ? 'ok' : 'err');
-    });
-    this.addEventListener('error', function() {
-        diagLog('❌ XHR ошибка: ' + url, 'err');
-    });
-    return originalXHROpen.apply(this, arguments);
-};
-
-// Проверяем загрузку ymaps
-setTimeout(function() {
-    if (typeof ymaps === 'undefined') {
-        diagLog('❌ ymaps не загрузился', 'err');
-    } else {
-        diagLog('1. ymaps загрузился ✅', 'ok');
-    }
-}, 2000);
-
-// === Получение ID пользователя ===
 var tgUserId = '';
 var selectedAddress = '';
 var selectedLink = '';
@@ -129,12 +66,11 @@ var myPlacemark = null;
 var idIndicator = document.getElementById('id-indicator');
 
 window.addEventListener('message', function(event) {
-    diagLog('📩 Получено сообщение от родителя: ' + JSON.stringify(event.data));
     if (event.data && event.data.type === 'TG_USER_ID') {
         tgUserId = event.data.userId;
         idIndicator.className = 'ok';
         idIndicator.innerHTML = '✅ ID получен: <b>' + tgUserId + '</b>';
-        diagLog('👤 user_id установлен: ' + tgUserId, 'ok');
+        diagLog('👤 user_id = ' + tgUserId, 'ok');
     }
 });
 
@@ -142,143 +78,88 @@ setTimeout(function () {
     if (!tgUserId) {
         idIndicator.className = 'fail';
         idIndicator.innerHTML = '❌ ID не получен за 5 секунд';
-        diagLog('⚠️ ID пользователя не получен за 5 сек', 'warn');
+        diagLog('⚠️ ID не получен', 'warn');
     }
 }, 5000);
 
-// === Сохранение переменной ===
+// === СОХРАНЕНИЕ ЧЕРЕЗ IMAGE BEACON (GET-запрос) ===
 function saveVariable(variableName, value) {
-    var formData = new FormData();
-    formData.append('token', PUZZLEBOT_TOKEN);
-    formData.append('method', 'variableChange');
-    formData.append('variable', variableName);
-    formData.append('expression', value);
-    formData.append('user_id', tgUserId);
-    navigator.sendBeacon(PUZZLEBOT_API, formData);
-    diagLog('💾 sendBeacon: ' + variableName + ' = ' + value, 'ok');
+    var url = PUZZLEBOT_API + 
+        '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
+        '&method=variableChange' +
+        '&variable=' + encodeURIComponent(variableName) +
+        '&expression=' + encodeURIComponent(value) +
+        '&user_id=' + encodeURIComponent(tgUserId);
+
+    diagLog('💾 Сохраняем ' + variableName, 'info');
+    diagLog('   URL: ' + url);
+    diagLog('   user_id в URL: ' + tgUserId, tgUserId ? 'ok' : 'err');
+
+    // Отправляем через картинку — браузер думает, что грузит изображение
+    var img = new Image();
+    img.onload = function() {
+        diagLog('   ✅ Запрос ушёл (' + variableName + ')', 'ok');
+    };
+    img.onerror = function() {
+        diagLog('   ⚠️ Запрос ушёл с ошибкой (это нормально, PuzzleBot вернул не картинку)', 'warn');
+    };
+    img.src = url;
+
+    // Для надёжности ещё и через fetch с no-cors
+    try {
+        fetch(url, { mode: 'no-cors' });
+    } catch (e) {}
 }
 
-// === Основная логика карты ===
 ymaps.ready(function () {
-    diagLog('2. ymaps.ready вызван ✅', 'ok');
+    diagLog('1. ymaps готов ✅', 'ok');
 
     var addressValue = document.getElementById('address-value');
     var linkValue = document.getElementById('link-value');
     var sendBtn = document.getElementById('send-btn');
     var statusEl = document.getElementById('status');
 
-    // Проверяем наличие всех нужных модулей
-    diagLog('3. Проверка модулей:');
-    diagLog('   ymaps.Map: ' + (typeof ymaps.Map !== 'undefined' ? '✅' : '❌'), typeof ymaps.Map !== 'undefined' ? 'ok' : 'err');
-    diagLog('   ymaps.Placemark: ' + (typeof ymaps.Placemark !== 'undefined' ? '✅' : '❌'), typeof ymaps.Placemark !== 'undefined' ? 'ok' : 'err');
-    diagLog('   ymaps.SuggestView: ' + (typeof ymaps.SuggestView !== 'undefined' ? '✅' : '❌'), typeof ymaps.SuggestView !== 'undefined' ? 'ok' : 'err');
-    diagLog('   ymaps.geocode: ' + (typeof ymaps.geocode !== 'undefined' ? '✅' : '❌'), typeof ymaps.geocode !== 'undefined' ? 'ok' : 'err');
-
-    // === Создаём карту ===
-    try {
-        myMap = new ymaps.Map('map', {
-            center: [45.035470, 38.975313],
-            zoom: 12,
-            controls: ['zoomControl']
-        });
-        diagLog('4. Карта создана ✅', 'ok');
-    } catch (e) {
-        diagLog('❌ Ошибка создания карты: ' + e.message, 'err');
-        return;
-    }
-
-    try {
-        myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
-        myMap.geoObjects.add(myPlacemark);
-        diagLog('5. Метка добавлена ✅', 'ok');
-    } catch (e) {
-        diagLog('❌ Ошибка добавления метки: ' + e.message, 'err');
-    }
-
-    // === Создаём SuggestView с подробным логированием ===
-    if (typeof ymaps.SuggestView === 'undefined') {
-        diagLog('❌ SuggestView недоступен — модуль не загрузился', 'err');
-        diagLog('   Попробуйте проверить подключение скрипта API', 'warn');
-        return;
-    }
-
-    diagLog('6. Создаём SuggestView...');
-
-    var suggestView = null;
-    try {
-        suggestView = new ymaps.SuggestView('address-input', {
-            results: 10
-        });
-        diagLog('7. SuggestView создан ✅', 'ok');
-        diagLog('   Объект: ' + (suggestView ? 'существует' : 'null'));
-    } catch (e) {
-        diagLog('❌ Ошибка создания SuggestView: ' + e.message, 'err');
-        return;
-    }
-
-    // === Проверяем, есть ли события у SuggestView ===
-    try {
-        var inputEl = document.getElementById('address-input');
-        diagLog('8. Input-элемент найден: ' + (inputEl ? 'да' : 'нет'), inputEl ? 'ok' : 'err');
-
-        // Слушаем событие выбора адреса
-        suggestView.events.add('select', function (e) {
-            diagLog('✅ Событие SELECT сработало', 'ok');
-            var item = e.get('item');
-            var value = item.value;
-            var displayName = item.displayName || value;
-
-            diagLog('   Выбран адрес: ' + displayName);
-
-            selectedAddress = displayName || value;
-            selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
-
-            addressValue.textContent = selectedAddress;
-            addressValue.classList.remove('empty');
-            linkValue.textContent = selectedLink;
-            linkValue.classList.remove('empty');
-            sendBtn.disabled = false;
-            statusEl.textContent = '';
-
-            ymaps.geocode(value, { results: 1 }).then(function (res) {
-                var firstGeoObject = res.geoObjects.get(0);
-                if (firstGeoObject) {
-                    var coords = firstGeoObject.geometry.getCoordinates();
-                    myMap.setCenter(coords, 16);
-                    myPlacemark.geometry.setCoordinates(coords);
-                    diagLog('   Карта центрирована: ' + coords, 'ok');
-                }
-            });
-        });
-        diagLog('9. Обработчик select добавлен ✅', 'ok');
-    } catch (e) {
-        diagLog('❌ Ошибка добавления обработчика: ' + e.message, 'err');
-    }
-
-    // === Логируем ввод в поле ===
-    var inputEl = document.getElementById('address-input');
-    var lastLogged = '';
-    inputEl.addEventListener('input', function() {
-        var v = inputEl.value;
-        if (v.length >= 2 && v !== lastLogged) {
-            lastLogged = v;
-            diagLog('⌨️ Введено: "' + v + '" (длина ' + v.length + ')', 'info');
-        }
+    myMap = new ymaps.Map('map', {
+        center: [45.035470, 38.975313],
+        zoom: 12,
+        controls: ['zoomControl']
     });
 
-    inputEl.addEventListener('focus', function() {
-        diagLog('👁️ Поле в фокусе', 'info');
+    myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
+    myMap.geoObjects.add(myPlacemark);
+
+    var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
+    diagLog('2. SuggestView создан ✅', 'ok');
+
+    suggestView.events.add('select', function (e) {
+        var item = e.get('item');
+        var value = item.value;
+        var displayName = item.displayName || value;
+
+        selectedAddress = displayName || value;
+        selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+        addressValue.textContent = selectedAddress;
+        addressValue.classList.remove('empty');
+        linkValue.textContent = selectedLink;
+        linkValue.classList.remove('empty');
+        sendBtn.disabled = false;
+        statusEl.textContent = '';
+
+        diagLog('✅ Выбран адрес: ' + selectedAddress, 'ok');
+
+        ymaps.geocode(value, { results: 1 }).then(function (res) {
+            var firstGeoObject = res.geoObjects.get(0);
+            if (firstGeoObject) {
+                var coords = firstGeoObject.geometry.getCoordinates();
+                myMap.setCenter(coords, 16);
+                myPlacemark.geometry.setCoordinates(coords);
+            }
+        });
     });
 
-    // === Проверяем через 2 секунды, появилась ли панель подсказок в DOM ===
-    setTimeout(function() {
-        var suggestContainers = document.querySelectorAll('.ymaps-suggest, [class*="suggest"]');
-        diagLog('10. Проверка DOM через 2 сек: найдено ' + suggestContainers.length + ' элементов с "suggest"', 'info');
-    }, 2000);
-
-    // === Обработчик кнопки Сохранить ===
     sendBtn.addEventListener('click', function () {
-        diagLog('🖱️ Кнопка Сохранить нажата', 'info');
+        diagLog('🖱️ Нажата кнопка Сохранить', 'info');
         statusEl.className = 'status';
         statusEl.textContent = '';
 
@@ -299,10 +180,10 @@ ymaps.ready(function () {
 
         statusEl.className = 'status ok';
         statusEl.textContent = '✅ Адрес сохранён!';
+        diagLog('=== СОХРАНЕНИЕ ЗАВЕРШЕНО ===', 'ok');
     });
 
-    diagLog('=== ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА ===', 'ok');
-    diagLog('👉 Теперь начните вводить адрес', 'warn');
+    diagLog('3. Готово. Введите адрес и нажмите Сохранить.', 'warn');
 });
 </script>
 </body>
