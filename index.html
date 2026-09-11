@@ -2,111 +2,596 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тест обратного геокодинга</title>
-<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df" type="text/javascript"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>Выбор адреса</title>
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2&load=package.full,SuggestView" type="text/javascript"></script>
 <style>
-body { font-family: monospace; padding: 12px; background: #f4f7fc; }
-.card { background: #fff; border-radius: 12px; padding: 16px; max-width: 700px; margin: 0 auto; }
-h2 { font-size: 16px; margin: 12px 0 8px; }
-pre { background: #1e2c3a; color: #e2e8f0; padding: 12px; border-radius: 8px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
-.ok { color: #7ee787; }
-.warn { color: #ffa657; }
-.err { color: #ff7b72; }
-.info { color: #79c0ff; }
-#map { width: 100%; height: 200px; margin: 10px 0; border-radius: 8px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 12px; }
+.card { background: #fff; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-width: 480px; width: 100%; margin: 0 auto; padding: 16px 14px 20px; }
+#id-indicator { padding: 10px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+#id-indicator.wait { background: #fff8e1; color: #8a6d00; border: 2px dashed #f0a500; }
+#id-indicator.ok { background: #e8f5e9; color: #2e7d32; border: 2px solid #43a047; }
+#id-indicator.test { background: #e3f2fd; color: #1565c0; border: 2px solid #1976d2; }
+#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; }
+#diag .ok { color: #7ee787; }
+#diag .err { color: #ff7b72; }
+#diag .info { color: #79c0ff; }
+#diag .warn { color: #ffa657; }
+#diag .new { color: #d2a8ff; font-weight: bold; }
+#address-input { width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; box-sizing: border-box; }
+#address-input:focus { border-color: #2a5298; }
+#address-input.warning { border-color: #f0a500; }
+#address-input.error { border-color: #e53935; }
+#address-warning { font-size: 14px; line-height: 1.5; padding: 12px 14px; border-radius: 10px; margin-top: 8px; display: none; font-weight: 600; }
+#address-warning.visible { display: block; }
+#address-warning.warn { background: #fff8e1; color: #8a6d00; border-left: 5px solid #f0a500; }
+#address-warning.error { background: #ffebee; color: #c62828; border-left: 5px solid #e53935; }
+#address-warning.ok { background: #e8f5e9; color: #2e7d32; border-left: 5px solid #43a047; }
+#json-warning { font-size: 14px; line-height: 1.5; padding: 12px 14px; border-radius: 10px; margin-bottom: 10px; display: none; font-weight: 600; }
+#json-warning.visible { display: block; }
+#json-warning.warn { background: #fff8e1; color: #8a6d00; border: 2px solid #f0a500; }
+#json-warning.error { background: #ffebee; color: #c62828; border: 2px solid #e53935; }
+#json-warning.ok { background: #e8f5e9; color: #2e7d32; border: 2px solid #43a047; }
+#map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; margin: 10px 0; background: #eef2f6; }
+.info-row { display: flex; align-items: baseline; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #eef2f6; }
+.info-label { font-weight: 500; min-width: 70px; }
+.info-value { font-weight: 600; word-break: break-word; flex: 1; font-size: 12px; }
+.info-value.empty { color: #8a9aa8; font-weight: 400; font-style: italic; }
+.btn-primary { background: #1e3c72; color: #fff; border: none; border-radius: 60px; padding: 13px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; box-shadow: 0 4px 12px rgba(30,60,114,0.25); margin-top: 10px; }
+.btn-primary:disabled { background: #c0cbd9; box-shadow: none; cursor: not-allowed; }
+.json-block { margin-top: 12px; padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
+.json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
+#json-output { width: 100%; height: 350px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
+.btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
+.btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
+.copy-hint { font-size: 11px; color: #555; margin-top: 6px; text-align: center; line-height: 1.4; }
+.status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
+.status.ok { color: #2e7d32; font-weight: 600; }
+.status.err { color: #c62828; font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="card">
-    <h2>Тест: Мирошниченко, 43 (45.067175, 39.063878)</h2>
-    <div id="map"></div>
-    <h2>1. Прямой геокодинг (по адресу)</h2>
-    <pre id="direct">Загрузка...</pre>
-    <h2>2. Обратный с kind=district</h2>
-    <pre id="revDistrict">Загрузка...</pre>
-    <h2>3. Обратный БЕЗ kind (всё что есть)</h2>
-    <pre id="revAll">Загрузка...</pre>
-    <h2>4. Обратный с kind=metro</h2>
-    <pre id="revMetro">Загрузка...</pre>
-    <h2>5. Обратный с kind=street</h2>
-    <pre id="revStreet">Загрузка...</pre>
+<div id="id-indicator" class="wait">⏳ Ждём ID и город...</div>
+<div id="diag">=== v19 ===</div>
+<input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
+<div id="address-warning"></div>
+<div id="map"></div>
+<div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
+<div class="info-row"><span class="info-label">Ссылка:</span><span class="info-value empty" id="link-value">не выбрана</span></div>
+
+<div class="json-block">
+    <div class="json-block-title">📋 JSON (для PuzzleBot):</div>
+    <div id="json-warning"></div>
+    <textarea id="json-output" readonly placeholder="Выберите точный адрес..."></textarea>
+    <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
+    <div class="copy-hint">Выберите адрес → нажмите кнопку → вставьте в форму PuzzleBot</div>
+</div>
+
+<button class="btn-primary" id="send-btn" disabled>Сохранить (старый способ)</button>
+<div class="status" id="status"></div>
 </div>
 
 <script>
-var KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
-var LAT = 45.067175, LON = 39.063878;
+var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
+var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
+var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
+var DEFAULT_USER_ID = '0000000000';
+var DEFAULT_CITY = 'Краснодар';
 
-function log(id, text, cls) {
-    var el = document.getElementById(id);
-    var span = cls ? '<span class="' + cls + '">' + text + '</span>' : text;
-    el.innerHTML += span + '\n';
+// ВАЖНЫЕ (все) — от большего к меньшему
+var IMPORTANT_TYPES = [
+    { field: 'stanitsa',      prefixes: ['станица', 'ст-ца'] },
+    { field: 'selo',          prefixes: ['село', 'с.'] },
+    { field: 'poselok',       prefixes: ['посёлок', 'поселок', 'п.'] },
+    { field: 'derevnya',      prefixes: ['деревня', 'д.'] },
+    { field: 'hutor',         prefixes: ['хутор', 'х.'] },
+    { field: 'aul',           prefixes: ['аул'] },
+    { field: 'kishlak',       prefixes: ['кишлак', 'к.'] },
+    { field: 'sloboda',       prefixes: ['слобода', 'сл.'] },
+    { field: 'mestechko',     prefixes: ['местечко', 'м.'] },
+    { field: 'mahalla',       prefixes: ['махалля', 'махаллинский'] },
+    { field: 'zhilrayon',     prefixes: ['жилой район', 'ж/р'] },
+    { field: 'microdistrict', prefixes: ['микрорайон', 'мкр', 'мкрн', 'мкр-н'] },
+    { field: 'massiv',        prefixes: ['массив', 'жилмассив', 'жилой массив'] }
+];
+
+// НЕВАЖНЫЕ (один) — от точного к общему
+var UNIMPORTANT_TYPES = [
+    { field: 'kvartal',  prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
+    { field: 'zhk',      prefixes: ['жк', 'жилой комплекс', 'ж/к'] },
+    { field: 'tszh',     prefixes: ['тсж', 'тсн', 'товарищество собственников'] },
+    { field: 'snt',      prefixes: ['снт', 'садоводческое товарищество'] },
+    { field: 'dnt',      prefixes: ['днт', 'дачное некоммерческое товарищество'] },
+    { field: 'cottage',  prefixes: ['кп', 'коттеджный посёлок', 'коттеджный поселок'] },
+    { field: 'promzona', prefixes: ['промзона', 'промышленная зона'] },
+    { field: 'grad',     prefixes: ['град'] },
+    { field: 'gorodok',  prefixes: ['городок'] },
+    { field: 'district', prefixes: ['район'] }
+];
+
+var diag = document.getElementById('diag');
+function diagLog(text, cls) {
+    var t = new Date().toLocaleTimeString('ru-RU');
+    diag.innerHTML += '[' + t + '] ' + (cls ? '<span class="' + cls + '">' + text + '</span>' : text) + '\n';
+    diag.scrollTop = diag.scrollHeight;
+}
+diag.innerHTML = '';
+diagLog('v19 старт', 'info');
+
+var tgUserId = '';
+var selectedCity = '';
+var cityArea = '';
+var selectedAddress = '';
+var selectedLink = '';
+var selectedCoords = null;
+var myMap = null;
+var myPlacemark = null;
+var isTestMode = false;
+var cityAreaRequested = false;
+
+var idIndicator = document.getElementById('id-indicator');
+var jsonOutput = document.getElementById('json-output');
+var copyBtn = document.getElementById('copy-btn');
+var addressInput = document.getElementById('address-input');
+var addressWarning = document.getElementById('address-warning');
+var jsonWarning = document.getElementById('json-warning');
+var addressValue = document.getElementById('address-value');
+var linkValue = document.getElementById('link-value');
+var sendBtn = document.getElementById('send-btn');
+var statusEl = document.getElementById('status');
+
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'TG_USER_ID') {
+        tgUserId = event.data.userId;
+        diagLog('user_id = ' + tgUserId, 'ok');
+        updateIndicator();
+    }
+    if (event.data && event.data.type === 'CITY') {
+        selectedCity = event.data.city || '';
+        diagLog('city = ' + selectedCity, 'ok');
+        updateIndicator();
+        requestCityArea();
+    }
+});
+
+function updateIndicator() {
+    if (isTestMode) {
+        idIndicator.className = 'test';
+        idIndicator.innerHTML = '🧪 ТЕСТ<br>ID: <b>' + tgUserId + '</b><br>🏙️ <b>' + selectedCity + '</b>';
+    } else if (tgUserId && selectedCity) {
+        idIndicator.className = 'ok';
+        idIndicator.innerHTML = '✅ ID: <b>' + tgUserId + '</b><br>🏙️ Город: <b>' + selectedCity + '</b>';
+    }
 }
 
-// 1. Прямой геокодинг
-ymaps.ready(function() {
-    var map = new ymaps.Map('map', {
-        center: [LAT, LON], zoom: 15, controls: ['zoomControl']
-    });
-    new ymaps.Placemark([LAT, LON]).setMap;
-    var pm = new ymaps.Placemark([LAT, LON], {}, { preset: 'islands#redIcon' });
-    map.geoObjects.add(pm);
+setTimeout(function () {
+    var need = false;
+    if (!tgUserId) { tgUserId = DEFAULT_USER_ID; need = true; }
+    if (!selectedCity) { selectedCity = DEFAULT_CITY; need = true; }
+    if (need) {
+        isTestMode = true;
+        diagLog('🧪 ТЕСТ-РЕЖИМ', 'warn');
+        updateIndicator();
+    }
+    requestCityArea();
+}, 3000);
 
-    document.getElementById('direct').innerHTML = '';
-    ymaps.geocode('Краснодар, улица Мирошниченко, 43', { results: 1 }).then(function(res) {
-        var g = res.geoObjects.get(0);
-        if (!g) { log('direct', 'пусто', 'err'); return; }
-        var meta = g.metaDataProperty.GeocoderMetaData;
-        log('direct', 'Адрес: ' + meta.text, 'ok');
-        log('direct', 'precision: ' + meta.precision, 'info');
-        log('direct', 'kind: ' + meta.kind, 'info');
-        var comps = meta.Address.Components;
-        comps.forEach(function(c) {
-            log('direct', '  ' + c.kind + ': ' + c.name, 'info');
+// 0 — Запрос area города
+function requestCityArea() {
+    if (cityAreaRequested || !selectedCity) return;
+    cityAreaRequested = true;
+    diagLog('[0] Запрос area для «' + selectedCity + '»...', 'new');
+
+    var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
+        '&format=json&results=1&lang=ru_RU&kind=area&geocode=' + encodeURIComponent(selectedCity);
+
+    fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+        var m = data.response.GeoObjectCollection.featureMember;
+        if (!m || m.length === 0) { diagLog('[0] area не найдено', 'warn'); return; }
+        var comps = m[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
+        for (var i = 0; i < comps.length; i++) {
+            if (comps[i].kind === 'area') { cityArea = comps[i].name; break; }
+        }
+        if (!cityArea) {
+            for (var j = 0; j < comps.length; j++) {
+                if (comps[j].kind === 'locality') { cityArea = comps[j].name; break; }
+            }
+        }
+        diagLog('[0] area города = «' + cityArea + '»', 'ok');
+    }).catch(function(e) { diagLog('[0] Ошибка: ' + e.message, 'err'); });
+}
+
+function saveVariableImage(name, value) {
+    var url = PUZZLEBOT_API + '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
+        '&method=variableChange&variable=' + encodeURIComponent(name) +
+        '&expression=' + encodeURIComponent(value) + '&user_id=' + encodeURIComponent(tgUserId);
+    var img = new Image();
+    img.src = url;
+}
+
+function showWarning(text, type) {
+    if (!text) {
+        addressWarning.className = '';
+        addressWarning.textContent = '';
+        addressInput.className = '';
+        jsonWarning.className = '';
+        jsonWarning.textContent = '';
+        return;
+    }
+    addressWarning.className = 'visible ' + type;
+    addressWarning.textContent = text;
+    addressInput.className = type === 'error' ? 'error' : (type === 'warn' ? 'warning' : '');
+    jsonWarning.className = 'visible ' + type;
+    jsonWarning.textContent = text;
+    diagLog('📢 ' + text, type === 'ok' ? 'ok' : (type === 'error' ? 'err' : 'warn'));
+}
+
+function resetAll() {
+    selectedAddress = ''; selectedLink = ''; selectedCoords = null;
+    jsonOutput.value = ''; copyBtn.disabled = true;
+    addressValue.textContent = 'не выбран'; addressValue.classList.add('empty');
+    linkValue.textContent = 'не выбрана'; linkValue.classList.add('empty');
+    sendBtn.disabled = true;
+    showWarning('', '');
+}
+
+function isSelectedCity(text, city) {
+    if (!city || !text) return false;
+    var t = text.toLowerCase(), c = city.toLowerCase();
+    if (t === c) return true;
+    var words = t.split(/[\s,.\-()\/]+/);
+    for (var i = 0; i < words.length; i++) {
+        if (words[i] === c) return true;
+    }
+    return false;
+}
+
+function detectType(text, list) {
+    var l = text.toLowerCase().trim();
+    for (var i = 0; i < list.length; i++) {
+        for (var j = 0; j < list[i].prefixes.length; j++) {
+            if (l.indexOf(list[i].prefixes[j].toLowerCase()) === 0) return list[i].field;
+        }
+    }
+    return null;
+}
+
+// Сборка district: важные (все, по порядку) + один неважный
+function buildDistrict(values) {
+    var important = [], unimportant = [];
+    values.forEach(function(v) {
+        var imp = detectType(v, IMPORTANT_TYPES);
+        if (imp) {
+            for (var k = 0; k < IMPORTANT_TYPES.length; k++) {
+                if (IMPORTANT_TYPES[k].field === imp) {
+                    important.push({ name: v, priority: k });
+                    break;
+                }
+            }
+            return;
+        }
+        var uni = detectType(v, UNIMPORTANT_TYPES);
+        if (uni) {
+            for (var m = 0; m < UNIMPORTANT_TYPES.length; m++) {
+                if (UNIMPORTANT_TYPES[m].field === uni) {
+                    unimportant.push({ name: v, priority: m });
+                    break;
+                }
+            }
+        }
+    });
+    important.sort(function(a,b){ return a.priority - b.priority; });
+    unimportant.sort(function(a,b){ return a.priority - b.priority; });
+    var res = important.map(function(x){ return x.name; });
+    if (unimportant.length > 0) res.push(unimportant[0].name);
+    return res;
+}
+
+// ============================================================
+// 0.1.2 — поиск ориентира
+// district → metro → railway → station → street
+// ============================================================
+var ORIENT_KINDS = [
+    { kind: 'district',         prefix: 'в районе ' },
+    { kind: 'metro',            prefix: 'рядом с ' },
+    { kind: 'railwayStation',   prefix: 'недалеко от ' },
+    { kind: 'station',          prefix: 'рядом с ' },
+    { kind: 'street',           prefix: 'в районе ' }
+];
+
+function findOrient(coords, callback) {
+    var lon = coords[1], lat = coords[0];
+
+    function tryKind(idx) {
+        if (idx >= ORIENT_KINDS.length) { callback(null, null); return; }
+        var item = ORIENT_KINDS[idx];
+        diagLog('🔍 [0.1.2] kind=' + item.kind + '...', 'new');
+
+        var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
+            '&format=json&results=1&lang=ru_RU&kind=' + item.kind + '&geocode=' + lon + ',' + lat;
+
+        fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+            var m = data.response.GeoObjectCollection.featureMember;
+            if (!m || m.length === 0) {
+                diagLog('   пусто, идём дальше', 'warn');
+                tryKind(idx + 1);
+                return;
+            }
+            var geo = m[0].GeoObject;
+            var meta = geo.metaDataProperty.GeocoderMetaData;
+            var comps = meta.Address && meta.Address.Components ? meta.Address.Components : [];
+
+            // Для kind=district — собираем ВСЕ district и применяем сортировку
+            if (item.kind === 'district') {
+                var districts = [];
+                comps.forEach(function(c) {
+                    if (c.kind === 'district') districts.push(c.name);
+                });
+                if (districts.length > 0) {
+                    diagLog('   ✅ Найдено district: ' + districts.join(', '), 'ok');
+                    var sorted = buildDistrict(districts);
+                    callback(sorted, item.prefix);
+                    return;
+                }
+                diagLog('   district в Components нет, идём дальше', 'warn');
+                tryKind(idx + 1);
+                return;
+            }
+
+            // Для остальных — ищем компонент нужного типа
+            var found = null;
+            for (var i = 0; i < comps.length; i++) {
+                if (comps[i].kind === item.kind) { found = comps[i].name; break; }
+            }
+            if (found) {
+                diagLog('   ✅ Найдено: ' + found, 'ok');
+                callback([found], item.prefix);
+            } else {
+                diagLog('   компонент не найден, идём дальше', 'warn');
+                tryKind(idx + 1);
+            }
+        }).catch(function(e) {
+            diagLog('   ❌ Ошибка: ' + e.message, 'err');
+            tryKind(idx + 1);
+        });
+    }
+    tryKind(0);
+}
+
+// ============================================================
+// Главный обработчик ответа Геокодера
+// ============================================================
+function handleGeocoderData(data, baseJson, onDone) {
+    var members = data.response.GeoObjectCollection.featureMember;
+    if (!members || members.length === 0) { onDone(null, 'Нет данных'); return; }
+
+    var meta = members[0].GeoObject.metaDataProperty.GeocoderMetaData;
+    var comps = meta.Address && meta.Address.Components ? meta.Address.Components : [];
+
+    var byKind = {};
+    comps.forEach(function(c) {
+        if (!byKind[c.kind]) byKind[c.kind] = [];
+        byKind[c.kind].push(c.name);
+    });
+
+    var localityArr = byKind.locality || [];
+    var areaArr = byKind.area || [];
+    var districtArr = byKind.district || [];
+    var streetArr = byKind.street || [];
+    var houseArr = byKind.house || [];
+    var precision = meta.precision || '';
+
+    var coords = baseJson.coords;
+    var link = baseJson.link;
+
+    // ===== 0 =====
+    diagLog('=== [0] locality = город? ===', 'new');
+    var localityIsCity = false;
+    for (var i = 0; i < localityArr.length; i++) {
+        if (isSelectedCity(localityArr[i], selectedCity)) { localityIsCity = true; break; }
+    }
+    diagLog('результат: ' + (localityIsCity ? 'ДА' : 'НЕТ'), localityIsCity ? 'ok' : 'warn');
+
+    if (localityIsCity) {
+        // ===== 0.1 =====
+        diagLog('=== [0.1] district от Яндекса? ===', 'new');
+        if (districtArr.length > 0) {
+            // 0.1.1
+            diagLog('[0.1.1] district есть → сборка', 'ok');
+            var values = districtArr.slice();
+            var district = buildDistrict(values);
+            diagLog('district = [' + district.join(', ') + ']', 'new');
+
+            if (houseArr.length > 0 && (streetArr.length > 0 || district.length > 0)) {
+                finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+            } else {
+                finishFail('Адрес неточный. Введите точнее.', onDone);
+            }
+        } else {
+            // 0.1.2
+            diagLog('[0.1.2] district пусто → проверка точности', 'warn');
+            if (houseArr.length > 0 && streetArr.length > 0) {
+                diagLog('   house + street есть → поиск ориентира', 'ok');
+                findOrient(coords, function(orientArr, prefix) {
+                    if (!orientArr || orientArr.length === 0) {
+                        finishFail('Не удалось найти ориентир. Уточните адрес.', onDone);
+                        return;
+                    }
+                    var district = [prefix + orientArr.join(', ')];
+                    diagLog('✅ Итог district: ' + district[0], 'ok');
+                    finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+                });
+            } else {
+                finishFail('Адрес неточный. Введите улицу и номер дома.', onDone);
+            }
+        }
+        return;
+    }
+
+    // ===== 0.2 =====
+    diagLog('=== [0.2] area совпадает? ===', 'new');
+    var areaMatches = false;
+    if (cityArea) {
+        for (var j = 0; j < areaArr.length; j++) {
+            if (areaArr[j].toLowerCase() === cityArea.toLowerCase()) { areaMatches = true; break; }
+        }
+    }
+    diagLog('результат: ' + (areaMatches ? 'ДА' : 'НЕТ'), areaMatches ? 'ok' : 'warn');
+
+    if (!areaMatches) {
+        finishFail('Адрес далеко от выбранного города. Проверьте.', onDone);
+        return;
+    }
+
+    // ===== 0.2.1 =====
+    diagLog('=== [0.2.1] district есть? ===', 'new');
+    var localityNonCity = [];
+    localityArr.forEach(function(v) {
+        if (!isSelectedCity(v, selectedCity)) localityNonCity.push(v);
+    });
+    var hasDistrict = districtArr.length > 0 || localityNonCity.length > 0;
+    diagLog('district есть: ' + hasDistrict, hasDistrict ? 'ok' : 'warn');
+
+    if (hasDistrict) {
+        // 0.2.1.1
+        diagLog('[0.2.1.1] district есть → сборка', 'ok');
+        var values = [];
+        localityNonCity.forEach(function(v) { values.push(v); });
+        districtArr.forEach(function(v) { values.push(v); });
+        var district = buildDistrict(values);
+        diagLog('district = [' + district.join(', ') + ']', 'new');
+
+        if (houseArr.length > 0 && (streetArr.length > 0 || district.length > 0)) {
+            finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+        } else {
+            finishFail('Адрес неточный. Введите точнее.', onDone);
+        }
+    } else {
+        // 0.2.1.2
+        diagLog('[0.2.1.2] district пусто → locality как district', 'warn');
+        if (localityNonCity.length === 0) {
+            finishFail('Не удалось определить ориентир.', onDone);
+            return;
+        }
+        var district = [localityNonCity.join(', ')];
+        diagLog('district = [' + district.join(', ') + ']', 'ok');
+
+        if (houseArr.length > 0) {
+            finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+        } else {
+            finishFail('Введите адрес до конца (номер дома).', onDone);
+        }
+    }
+}
+
+function finishSuccess(district, coords, link, street, house, precision, isExact, onDone) {
+    var result = {
+        coords: coords,
+        in_city: true,
+        district: district.join(', '),
+        street: street,
+        house: house,
+        is_exact: isExact,
+        precision: precision,
+        link: link
+    };
+    showWarning('✅ Адрес точный: ' + district.join(', '), 'ok');
+    onDone(result, null);
+}
+
+function finishFail(message, onDone) {
+    showWarning('❌ ' + message, 'error');
+    onDone(null, message);
+}
+
+function fetchGeocoder(coords, baseJson, onDone) {
+    var lon = coords[1], lat = coords[0];
+    var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
+        '&format=json&results=1&lang=ru_RU&geocode=' + lon + ',' + lat;
+    diagLog('🔄 Запрос Геокодера...', 'new');
+    fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+        handleGeocoderData(data, baseJson, onDone);
+    }).catch(function(e) {
+        diagLog('❌ Ошибка: ' + e.message, 'err');
+        onDone(null, e.message);
+    });
+}
+
+copyBtn.addEventListener('click', function() {
+    if (!jsonOutput.value || copyBtn.disabled) return;
+    jsonOutput.select();
+    jsonOutput.setSelectionRange(0, 999999);
+    try {
+        document.execCommand('copy');
+        copyBtn.textContent = '✅ Скопировано!';
+        setTimeout(function() { copyBtn.textContent = '📋 Скопировать JSON'; }, 2000);
+    } catch (e) {}
+});
+
+ymaps.ready(function () {
+    diagLog('ymaps готов ✅', 'ok');
+
+    myMap = new ymaps.Map('map', {
+        center: [45.035470, 38.975313], zoom: 12, controls: ['zoomControl']
+    });
+    myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
+    myMap.geoObjects.add(myPlacemark);
+
+    var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
+
+    suggestView.events.add('select', function (e) {
+        var item = e.get('item');
+        var value = item.value;
+        var displayName = item.displayName || value;
+
+        selectedAddress = displayName || value;
+        selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+        addressValue.textContent = selectedAddress;
+        addressValue.classList.remove('empty');
+        linkValue.textContent = selectedLink;
+        linkValue.classList.remove('empty');
+        sendBtn.disabled = false;
+        showWarning('⏳ Проверяем адрес...', 'warn');
+        jsonOutput.value = 'Загрузка...';
+        copyBtn.disabled = true;
+
+        ymaps.geocode(value, { results: 1 }).then(function (res) {
+            var g = res.geoObjects.get(0);
+            if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
+            var coords = g.geometry.getCoordinates();
+            selectedCoords = coords;
+            myMap.setCenter(coords, 16);
+            myPlacemark.geometry.setCoordinates(coords);
+
+            fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
+                if (result) {
+                    jsonOutput.value = JSON.stringify(result, null, 2);
+                    copyBtn.disabled = false;
+                } else {
+                    jsonOutput.value = '';
+                    copyBtn.disabled = true;
+                }
+            });
+        }).catch(function(e) {
+            showWarning('❌ Ошибка: ' + e.message, 'error');
         });
     });
 
-    // 2-5. Обратные запросы через прямые HTTP-запросы
-    fetchReverse('revDistrict', 'district');
-    fetchReverse('revAll', '');
-    fetchReverse('revMetro', 'metro');
-    fetchReverse('revStreet', 'street');
-});
-
-function fetchReverse(id, kind) {
-    var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + KEY +
-        '&format=json&results=1&lang=ru_RU' +
-        (kind ? '&kind=' + kind : '') +
-        '&geocode=' + LON + ',' + LAT;
-
-    document.getElementById(id).innerHTML = '';
-    log(id, 'kind: ' + (kind || '(без kind)'), 'info');
-    log(id, 'URL: ' + url, 'info');
-
-    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        var m = data.response.GeoObjectCollection.featureMember;
-        if (!m || m.length === 0) {
-            log(id, '❌ ПУСТО — ничего не найдено', 'err');
-            return;
-        }
-        log(id, '✅ Найдено объектов: ' + m.length, 'ok');
-        for (var i = 0; i < m.length; i++) {
-            var g = m[i].GeoObject;
-            var meta = g.metaDataProperty.GeocoderMetaData;
-            log(id, '--- Объект ' + (i+1) + ' ---', 'warn');
-            log(id, 'text: ' + meta.text, 'ok');
-            log(id, 'kind: ' + meta.kind, 'info');
-            log(id, 'precision: ' + meta.precision, 'info');
-            if (meta.Address && meta.Address.Components) {
-                meta.Address.Components.forEach(function(c) {
-                    log(id, '  ' + c.kind + ': ' + c.name, 'info');
-                });
-            }
-        }
-    }).catch(function(e) {
-        log(id, '❌ Ошибка: ' + e.message, 'err');
+    addressInput.addEventListener('input', function() {
+        if (selectedAddress) resetAll();
     });
-}
+
+    sendBtn.addEventListener('click', function () {
+        if (!selectedAddress || !selectedLink || !tgUserId) return;
+        saveVariableImage('ADD_APP_ADDRESS', selectedAddress);
+        saveVariableImage('ADD_APP_LINK', selectedLink);
+        statusEl.className = 'status ok';
+        statusEl.textContent = '✅ Отправлено';
+    });
+});
 </script>
 </body>
 </html>
