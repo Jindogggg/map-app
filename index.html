@@ -42,7 +42,68 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
 .copy-hint { font-size: 11px; color: #555; margin-top: 6px; text-align: center; line-height: 1.4; }
 
-/* ===== ПОДСКАЗКИ SUGGESTVIEW — ПЕРЕНОС НА НЕСКОЛЬКО СТРОК ===== */
+/* ===== ПОПАП ===== */
+#popup-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+#popup-overlay.visible { display: flex; }
+#popup {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px 20px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+#popup-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e3c72;
+    margin-bottom: 12px;
+    text-align: center;
+}
+#popup-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1e2c3a;
+    margin-bottom: 20px;
+    text-align: center;
+}
+#popup-address {
+    background: #f0f4fa;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #1e3c72;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+    word-break: break-word;
+}
+.popup-buttons {
+    display: flex;
+    gap: 10px;
+}
+.popup-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.popup-btn-ok { background: #43a047; color: #fff; }
+.popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
+
+/* ===== ПОДСКАЗКИ SUGGESTVIEW ===== */
 .ymaps-suggest,
 .ymaps-suggest__list,
 .ymaps-suggest__item,
@@ -57,13 +118,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     max-height: none !important;
     line-height: 1.4 !important;
 }
-
 .ymaps-suggest__list,
 [class*="suggest__list"] {
     max-height: 300px !important;
     overflow-y: auto !important;
 }
-
 .ymaps-suggest__item,
 [class*="suggest__item"] {
     padding: 10px 12px !important;
@@ -73,15 +132,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     display: block !important;
     width: 100% !important;
 }
-
 .ymaps-suggest__item:hover,
 [class*="suggest__item"]:hover,
 .ymaps-suggest__item_selected,
 [class*="suggest__item_selected"] {
     background: #f0f4fa !important;
 }
-
-/* Контейнер подсказок — по ширине поля */
 .ymaps-suggest,
 [class*="ymaps-suggest"] {
     width: 100% !important;
@@ -94,7 +150,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="admin-only wait">⏳ Ждём ID и город...</div>
-<div id="diag" class="admin-only">=== v23 ===</div>
+<div id="diag" class="admin-only">=== v24 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="address-warning"></div>
 <div id="map"></div>
@@ -106,6 +162,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
     <div class="copy-hint">Выберите адрес → нажмите кнопку → вставьте в форму PuzzleBot</div>
 </div>
+</div>
+
+<!-- ПОПАП -->
+<div id="popup-overlay">
+    <div id="popup">
+        <div id="popup-title">⚠️ Адрес вне города</div>
+        <div id="popup-address"></div>
+        <div id="popup-text">
+            Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем, так как адрес находится далеко за городом.
+        </div>
+        <div class="popup-buttons">
+            <button class="popup-btn popup-btn-cancel" id="popup-cancel">Отмена</button>
+            <button class="popup-btn popup-btn-ok" id="popup-ok">Продолжить</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -165,6 +236,7 @@ var myPlacemark = null;
 var isTestMode = false;
 var isAdmin = false;
 var cityAreaRequested = false;
+var pendingOutsideResult = null;
 
 var idIndicator = document.getElementById('id-indicator');
 var jsonOutput = document.getElementById('json-output');
@@ -172,6 +244,8 @@ var copyBtn = document.getElementById('copy-btn');
 var addressInput = document.getElementById('address-input');
 var addressWarning = document.getElementById('address-warning');
 var addressValue = document.getElementById('address-value');
+var popupOverlay = document.getElementById('popup-overlay');
+var popupAddress = document.getElementById('popup-address');
 
 function checkAdmin(id) {
     if (!id) return false;
@@ -547,6 +621,7 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
     onDone(result, null);
 }
 
+// ===== ЗАВЕРШЕНИЕ ДЛЯ АДРЕСОВ ВНЕ ГОРОДА — С ПОПАПОМ =====
 function finishSuccessOutside(district, coords, link, street, house, precision, localityStr, onDone) {
     var result = {
         coords: coords,
@@ -559,14 +634,43 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         precision: precision,
         link: link
     };
-    showWarning('✅ Адрес точный (вне города): ' + localityStr, 'ok');
-    onDone(result, null);
+
+    // Показываем попап, JSON пока не отдаём
+    pendingOutsideResult = result;
+    popupAddress.textContent = localityStr || 'Адрес вне выбранного города';
+    popupOverlay.classList.add('visible');
+    showWarning('⚠️ Адрес вне города. Подтвердите в диалоге.', 'warn');
+    diagLog('⚠️ Попап: адрес вне города', 'warn');
+    // onDone НЕ вызываем — ждём кнопку в попапе
 }
 
 function finishFail(message, onDone) {
     showWarning('❌ ' + message, 'error');
     onDone(null, message);
 }
+
+// ===== ОБРАБОТКА КНОПОК ПОПАПА =====
+document.getElementById('popup-ok').addEventListener('click', function() {
+    popupOverlay.classList.remove('visible');
+    if (pendingOutsideResult) {
+        diagLog('✅ Пользователь подтвердил адрес вне города', 'ok');
+        var result = pendingOutsideResult;
+        pendingOutsideResult = null;
+        // Теперь отдаём JSON
+        showWarning('✅ Адрес подтверждён: ' + result.locality, 'ok');
+        // Напрямую заполняем JSON
+        jsonOutput.value = JSON.stringify(result, null, 2);
+        copyBtn.disabled = false;
+    }
+});
+
+document.getElementById('popup-cancel').addEventListener('click', function() {
+    popupOverlay.classList.remove('visible');
+    pendingOutsideResult = null;
+    diagLog('❌ Пользователь отменил адрес вне города → сброс', 'warn');
+    resetAll();
+    addressInput.value = '';
+});
 
 function fetchGeocoder(coords, baseJson, onDone) {
     var lon = coords[1], lat = coords[0];
@@ -629,6 +733,9 @@ ymaps.ready(function () {
                 if (result) {
                     jsonOutput.value = JSON.stringify(result, null, 2);
                     copyBtn.disabled = false;
+                } else if (pendingOutsideResult) {
+                    // Попап показан, JSON не заполняем — ждём ответа пользователя
+                    diagLog('⏳ Ждём подтверждения в попапе', 'info');
                 } else {
                     jsonOutput.value = '';
                     copyBtn.disabled = true;
@@ -645,4 +752,4 @@ ymaps.ready(function () {
 });
 </script>
 </body>
-</html>
+    </html>
