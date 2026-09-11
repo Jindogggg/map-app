@@ -41,12 +41,60 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
 .copy-hint { font-size: 11px; color: #555; margin-top: 6px; text-align: center; line-height: 1.4; }
+
+/* ===== ПОДСКАЗКИ SUGGESTVIEW — ПЕРЕНОС НА НЕСКОЛЬКО СТРОК ===== */
+.ymaps-suggest,
+.ymaps-suggest__list,
+.ymaps-suggest__item,
+[class*="suggest"] {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    line-height: 1.4 !important;
+}
+
+.ymaps-suggest__list,
+[class*="suggest__list"] {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+}
+
+.ymaps-suggest__item,
+[class*="suggest__item"] {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #eef2f6 !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.ymaps-suggest__item:hover,
+[class*="suggest__item"]:hover,
+.ymaps-suggest__item_selected,
+[class*="suggest__item_selected"] {
+    background: #f0f4fa !important;
+}
+
+/* Контейнер подсказок — по ширине поля */
+.ymaps-suggest,
+[class*="ymaps-suggest"] {
+    width: 100% !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+}
 </style>
 </head>
 <body>
 <div class="card">
 <div id="id-indicator" class="admin-only wait">⏳ Ждём ID и город...</div>
-<div id="diag" class="admin-only">=== v22 ===</div>
+<div id="diag" class="admin-only">=== v23 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="address-warning"></div>
 <div id="map"></div>
@@ -374,7 +422,6 @@ function handleGeocoderData(data, baseJson, onDone) {
     var coords = baseJson.coords;
     var link = baseJson.link;
 
-    // ===== 0 =====
     diagLog('=== [0] locality = город? ===', 'new');
     var localityIsCity = false;
     for (var i = 0; i < localityArr.length; i++) {
@@ -383,10 +430,8 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('результат: ' + (localityIsCity ? 'ДА' : 'НЕТ'), localityIsCity ? 'ok' : 'warn');
 
     if (localityIsCity) {
-        // ===== 0.1 =====
         diagLog('=== [0.1] district от Яндекса? ===', 'new');
         if (districtArr.length > 0) {
-            // 0.1.1
             diagLog('[0.1.1] district есть → сборка', 'ok');
             var values = districtArr.slice();
             var district = buildDistrict(values);
@@ -398,7 +443,6 @@ function handleGeocoderData(data, baseJson, onDone) {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
             }
         } else {
-            // 0.1.2
             diagLog('[0.1.2] district пусто → проверка точности', 'warn');
             if (houseArr.length > 0 && streetArr.length > 0) {
                 diagLog('   house + street есть → поиск ориентира', 'ok');
@@ -418,7 +462,6 @@ function handleGeocoderData(data, baseJson, onDone) {
         return;
     }
 
-    // ===== 0.2 =====
     diagLog('=== [0.2] area совпадает? ===', 'new');
     var areaMatches = false;
     if (cityArea) {
@@ -429,7 +472,6 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('результат: ' + (areaMatches ? 'ДА' : 'НЕТ'), areaMatches ? 'ok' : 'warn');
 
     if (!areaMatches) {
-        // ===== 0.2.2 =====
         diagLog('=== [0.2.2] вне округа ===', 'new');
         diagLog('Шаг 1. Точность: street + house?', 'info');
         if (houseArr.length === 0 || streetArr.length === 0) {
@@ -437,12 +479,10 @@ function handleGeocoderData(data, baseJson, onDone) {
             return;
         }
         diagLog('   ✅ точно', 'ok');
-
         diagLog('Шаг 2. locality (первое значение)', 'info');
         var localityStr = localityArr.length > 0 ? localityArr[0] : '';
         diagLog('   locality = «' + localityStr + '»', 'ok');
-
-        diagLog('Шаг 3. district — собираем только из district Яндекса', 'info');
+        diagLog('Шаг 3. district — только из district Яндекса', 'info');
         var district = [];
         if (districtArr.length > 0) {
             district = buildDistrict(districtArr.slice());
@@ -450,12 +490,10 @@ function handleGeocoderData(data, baseJson, onDone) {
         } else {
             diagLog('   district Яндекса пусто → игнорируем', 'warn');
         }
-
         finishSuccessOutside(district, coords, link, streetArr, houseArr, precision, localityStr, onDone);
         return;
     }
 
-    // ===== 0.2.1 =====
     diagLog('=== [0.2.1] district есть? ===', 'new');
     var localityNonCity = [];
     localityArr.forEach(function(v) {
@@ -465,7 +503,6 @@ function handleGeocoderData(data, baseJson, onDone) {
     diagLog('district есть: ' + hasDistrict, hasDistrict ? 'ok' : 'warn');
 
     if (hasDistrict) {
-        // 0.2.1.1
         diagLog('[0.2.1.1] district есть → сборка', 'ok');
         var values = [];
         localityNonCity.forEach(function(v) { values.push(v); });
@@ -479,7 +516,6 @@ function handleGeocoderData(data, baseJson, onDone) {
             finishFail('Введите точный адрес (улица и номер дома).', onDone);
         }
     } else {
-        // 0.2.1.2
         diagLog('[0.2.1.2] district пусто → locality как district', 'warn');
         if (localityNonCity.length === 0) {
             finishFail('Не удалось определить ориентир.', onDone);
