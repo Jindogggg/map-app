@@ -605,4 +605,78 @@ function fetchGeocoder(coords, baseJson, onDone) {
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
         '&format=json&results=1&lang=ru_RU&geocode=' + lon + ',' + lat;
     diagLog('🔄 Запрос Геокодера...', 'new');
-    fetch(url).then
+    fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+        handleGeocoderData(data, baseJson, onDone);
+    }).catch(function(e) {
+        diagLog('❌ Ошибка: ' + e.message, 'err');
+        onDone(null, e.message);
+    });
+}
+
+copyBtn.addEventListener('click', function() {
+    if (!jsonOutput.value || copyBtn.disabled) return;
+    jsonOutput.select();
+    jsonOutput.setSelectionRange(0, 999999);
+    try {
+        document.execCommand('copy');
+        copyBtn.textContent = '✅ Скопировано!';
+        setTimeout(function() { copyBtn.textContent = '📋 Скопировать JSON'; }, 2000);
+    } catch (e) {}
+});
+
+ymaps.ready(function () {
+    diagLog('ymaps готов ✅', 'ok');
+
+    myMap = new ymaps.Map('map', {
+        center: [45.035470, 38.975313], zoom: 12, controls: ['zoomControl']
+    });
+    myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
+    myMap.geoObjects.add(myPlacemark);
+
+    var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
+
+    suggestView.events.add('select', function (e) {
+        var item = e.get('item');
+        var value = item.value;
+        var displayName = item.displayName || value;
+
+        selectedAddress = displayName || value;
+        selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+        addressValue.textContent = selectedAddress;
+        addressValue.classList.remove('empty');
+        showWarning('⏳ Проверяем адрес...', 'warn');
+        jsonOutput.value = 'Загрузка...';
+        copyBtn.disabled = true;
+
+        ymaps.geocode(value, { results: 1 }).then(function (res) {
+            var g = res.geoObjects.get(0);
+            if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
+            var coords = g.geometry.getCoordinates();
+            selectedCoords = coords;
+            myMap.setCenter(coords, 16);
+            myPlacemark.geometry.setCoordinates(coords);
+
+            fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
+                if (result) {
+                    jsonOutput.value = JSON.stringify(result, null, 2);
+                    copyBtn.disabled = false;
+                } else if (pendingOutsideResult) {
+                    diagLog('⏳ Ждём подтверждения в попапе', 'info');
+                } else {
+                    jsonOutput.value = '';
+                    copyBtn.disabled = true;
+                }
+            });
+        }).catch(function(e) {
+            showWarning('❌ Ошибка: ' + e.message, 'error');
+        });
+    });
+
+    addressInput.addEventListener('input', function() {
+        if (selectedAddress) resetAll();
+    });
+});
+</script>
+</body>
+</html>
