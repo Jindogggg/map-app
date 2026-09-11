@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 <title>Выбор адреса</title>
-<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2" type="text/javascript"></script>
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2&load=SuggestView" type="text/javascript"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 12px; }
@@ -13,6 +13,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #id-indicator.wait { background: #fff8e1; color: #8a6d00; border: 2px dashed #f0a500; }
 #id-indicator.ok { background: #e8f5e9; color: #2e7d32; border: 2px solid #43a047; }
 #id-indicator.fail { background: #ffebee; color: #c62828; border: 2px solid #e53935; }
+#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 11px; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+#diag .ok { color: #7ee787; }
+#diag .err { color: #ff7b72; }
+#diag .info { color: #79c0ff; }
 #address-input { width: 100%; padding: 12px 14px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; box-sizing: border-box; }
 #address-input:focus { border-color: #2a5298; }
 #map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; margin: 10px 0; background: #eef2f6; }
@@ -30,6 +34,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="id-indicator" class="wait">⏳ Ждём ID пользователя от мини-приложения...</div>
+<div id="diag">Загрузка...</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map"></div>
 <div class="info-row"><span class="info-label">Адрес:</span><span class="info-value empty" id="address-value">не выбран</span></div>
@@ -41,6 +46,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <script>
 const PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 const PUZZLEBOT_API = 'https://api.puzzlebot.top/';
+
+const diag = document.getElementById('diag');
+function diagLog(text, cls) {
+    diag.innerHTML += (cls ? '<span class="' + cls + '">' + text + '</span>' : text) + '\n';
+}
+diag.innerHTML = '';
 
 let tgUserId = '';
 let selectedAddress = '';
@@ -75,66 +86,115 @@ function saveVariable(variableName, value) {
     navigator.sendBeacon(PUZZLEBOT_API, formData);
 }
 
+// === Диагностика загрузки API ===
+diagLog('1. Скрипт Яндекс.Карт подключён', 'ok');
+
+window.addEventListener('error', function(e) {
+    diagLog('❌ Ошибка: ' + (e.message || 'неизвестно'), 'err');
+});
+
+// Проверяем через 3 секунды, что ymaps загрузился
+setTimeout(function() {
+    if (typeof ymaps === 'undefined') {
+        diagLog('❌ ymaps не загрузился — блокировка скрипта', 'err');
+    } else {
+        diagLog('2. ymaps загрузился', 'ok');
+    }
+}, 3000);
+
 ymaps.ready(function () {
+    diagLog('3. ymaps готов', 'ok');
+
     const addressValue = document.getElementById('address-value');
     const linkValue = document.getElementById('link-value');
     const sendBtn = document.getElementById('send-btn');
     const statusEl = document.getElementById('status');
 
-    myMap = new ymaps.Map('map', {
-        center: [45.035470, 38.975313],
-        zoom: 12,
-        controls: ['zoomControl']
-    });
-
-    myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
-    myMap.geoObjects.add(myPlacemark);
-
-    const suggestView = new ymaps.SuggestView('address-input', { results: 10 });
-
-    suggestView.events.add('select', function (e) {
-        const item = e.get('item');
-        const value = item.value;
-        const displayName = item.displayName || value;
-
-        selectedAddress = displayName || value;
-        selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
-
-        addressValue.textContent = selectedAddress;
-        addressValue.classList.remove('empty');
-        linkValue.textContent = selectedLink;
-        linkValue.classList.remove('empty');
-        sendBtn.disabled = false;
-        statusEl.textContent = '';
-
-        ymaps.geocode(value, { results: 1 }).then(function (res) {
-            const firstGeoObject = res.geoObjects.get(0);
-            if (firstGeoObject) {
-                const coords = firstGeoObject.geometry.getCoordinates();
-                myMap.setCenter(coords, 16);
-                myPlacemark.geometry.setCoordinates(coords);
-            }
+    // === Пытаемся загрузить модуль SuggestView явно ===
+    if (typeof ymaps.SuggestView === 'undefined') {
+        diagLog('4. SuggestView НЕ найден, пробуем ymaps.load...', 'info');
+        ymaps.load('SuggestView').then(function() {
+            diagLog('5. SuggestView загружен через ymaps.load', 'ok');
+            initAll();
+        }).catch(function(err) {
+            diagLog('❌ Не удалось загрузить SuggestView: ' + err.message, 'err');
+            initMapOnly();
         });
-    });
+    } else {
+        diagLog('4. SuggestView доступен сразу', 'ok');
+        initAll();
+    }
 
-    sendBtn.addEventListener('click', function () {
-        statusEl.className = 'status';
-        statusEl.textContent = '';
+    function initMapOnly() {
+        myMap = new ymaps.Map('map', {
+            center: [45.035470, 38.975313],
+            zoom: 12,
+            controls: ['zoomControl']
+        });
+        diagLog('Карта создана, но без подсказок', 'info');
+    }
 
-        if (!selectedAddress || !selectedLink) return;
+    function initAll() {
+        myMap = new ymaps.Map('map', {
+            center: [45.035470, 38.975313],
+            zoom: 12,
+            controls: ['zoomControl']
+        });
 
-        if (!tgUserId) {
-            statusEl.className = 'status err';
-            statusEl.textContent = 'ID не получен';
-            return;
+        myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
+        myMap.geoObjects.add(myPlacemark);
+
+        try {
+            const suggestView = new ymaps.SuggestView('address-input', { results: 10 });
+            diagLog('6. SuggestView создан ✅', 'ok');
+
+            suggestView.events.add('select', function (e) {
+                const item = e.get('item');
+                const value = item.value;
+                const displayName = item.displayName || value;
+
+                selectedAddress = displayName || value;
+                selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+                addressValue.textContent = selectedAddress;
+                addressValue.classList.remove('empty');
+                linkValue.textContent = selectedLink;
+                linkValue.classList.remove('empty');
+                sendBtn.disabled = false;
+                statusEl.textContent = '';
+
+                ymaps.geocode(value, { results: 1 }).then(function (res) {
+                    const firstGeoObject = res.geoObjects.get(0);
+                    if (firstGeoObject) {
+                        const coords = firstGeoObject.geometry.getCoordinates();
+                        myMap.setCenter(coords, 16);
+                        myPlacemark.geometry.setCoordinates(coords);
+                    }
+                });
+            });
+        } catch (err) {
+            diagLog('❌ Ошибка создания SuggestView: ' + err.message, 'err');
         }
 
-        saveVariable('ADD_APP_ADDRESS', selectedAddress);
-        saveVariable('ADD_APP_LINK', selectedLink);
+        sendBtn.addEventListener('click', function () {
+            statusEl.className = 'status';
+            statusEl.textContent = '';
 
-        statusEl.className = 'status ok';
-        statusEl.textContent = '✅ Адрес сохранён!';
-    });
+            if (!selectedAddress || !selectedLink) return;
+
+            if (!tgUserId) {
+                statusEl.className = 'status err';
+                statusEl.textContent = 'ID не получен';
+                return;
+            }
+
+            saveVariable('ADD_APP_ADDRESS', selectedAddress);
+            saveVariable('ADD_APP_LINK', selectedLink);
+
+            statusEl.className = 'status ok';
+            statusEl.textContent = '✅ Адрес сохранён!';
+        });
+    }
 });
 </script>
 </body>
