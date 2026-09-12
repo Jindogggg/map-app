@@ -8,26 +8,28 @@
 body { font-family: -apple-system, sans-serif; padding: 20px; background: #f4f7fc; }
 .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 h2 { font-size: 18px; margin-bottom: 12px; color: #1e3c72; }
+p { font-size: 14px; line-height: 1.5; margin-bottom: 12px; }
 button { background: #1e3c72; color: #fff; border: none; border-radius: 30px; padding: 14px 20px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 10px; }
 button:disabled { background: #c0cbd9; }
 #log { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 11px; padding: 12px; border-radius: 8px; margin-top: 16px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; max-height: 400px; overflow-y: auto; }
 .ok { color: #7ee787; }
 .err { color: #ff7b72; }
 .info { color: #79c0ff; }
+.warn { color: #ffa657; }
 </style>
 </head>
 <body>
 <div class="card">
-<h2>🧪 Тест через allorigins</h2>
-<p style="font-size:14px; margin-bottom:10px;">Отправит слово <b>test</b> в переменную <b>ADD_APP_TEST</b> пользователю <b>1509864197</b> через прокси allorigins.win</p>
-<button id="send-btn">Отправить тест</button>
+<h2>🧪 Тест CorsProxy из GitHub</h2>
+<p>Отправит слово <b>privet</b> в переменную <b>ADD_APP_TEST</b> пользователю <b>1509864197</b> через <b>corsproxy.io</b></p>
+<button id="send-btn">Запустить тест</button>
 <div id="log">Готов к отправке...</div>
 </div>
 
 <script>
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
-var CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+var CORSPROXY_KEY = 'ef2f568a';
 
 var logEl = document.getElementById('log');
 function log(text, cls) {
@@ -37,34 +39,49 @@ function log(text, cls) {
 }
 
 document.getElementById('send-btn').addEventListener('click', function() {
-    logEl.innerHTML = '=== НАЧАЛО ТЕСТА ===';
-    
+    logEl.innerHTML = '=== ТЕСТ ===';
+    log('Origin: ' + window.location.origin, 'info');
+    log('');
+
+    // Целевой URL
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
         '&method=variableChange' +
         '&variable=ADD_APP_TEST' +
-        '&expression=%22test%22' +
+        '&expression=%22privet%22' +
         '&user_id=1509864197';
 
-    log('Целевой URL: ' + targetUrl, 'info');
+    log('Целевой URL:', 'info');
+    log(targetUrl);
+    log('');
 
-    var proxyUrl = CORS_PROXY + encodeURIComponent(targetUrl);
-    log('URL через прокси: ' + proxyUrl, 'info');
-    log('Отправка запроса...', 'info');
-
-    fetch(proxyUrl, { method: 'GET' })
-        .then(function(response) {
-            log('✅ Ответ получен! Статус: ' + response.status, 'ok');
-            return response.text();
-        })
+    // URL через corsproxy.io (без ключа)
+    var proxyUrlNoKey = 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl);
+    log('Тест 1 (без ключа):', 'warn');
+    log(proxyUrlNoKey);
+    log('');
+    fetch(proxyUrlNoKey, { method: 'GET' })
+        .then(function(r) { return r.text(); })
         .then(function(text) {
-            log('Ответ: ' + text, 'ok');
-            log('=== ТЕСТ ЗАВЕРШЁН ===', 'ok');
-            log('Проверь переменную ADD_APP_TEST.', 'info');
+            log('✅ Ответ (без ключа): ' + text.substring(0, 300), 'ok');
         })
-        .catch(function(error) {
-            log('❌ ОШИБКА: ' + error.message, 'err');
-            log('Прокси не работает из GitHub.', 'err');
+        .catch(function(err) {
+            log('❌ Ошибка (без ключа): ' + err.message, 'err');
+        });
+
+    // URL через corsproxy.io (с ключом)
+    var proxyUrlWithKey = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
+    log('');
+    log('Тест 2 (с ключом ' + CORSPROXY_KEY + '):', 'warn');
+    log(proxyUrlWithKey);
+    log('');
+    fetch(proxyUrlWithKey, { method: 'GET' })
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+            log('✅ Ответ (с ключом): ' + text.substring(0, 300), 'ok');
+        })
+        .catch(function(err) {
+            log('❌ Ошибка (с ключом): ' + err.message, 'err');
         });
 });
 </script>
