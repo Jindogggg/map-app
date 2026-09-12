@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v28</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v30</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v28 ===</div>
+<div id="diag" class="admin-only">=== v30 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v28';
+var SCRIPT_VERSION = 'v30';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -280,6 +280,49 @@ function buildDistrict(values) {
     return res;
 }
 
+function tokenizeAddress(addr) {
+    if (!addr) return [];
+    var parts = addr.split(/[,;]/);
+    var result = [];
+    for (var i = 0; i < parts.length; i++) {
+        var t = parts[i].trim().toLowerCase();
+        if (t) result.push(t);
+    }
+    return result;
+}
+
+function pickMatchingHouse(houseArr, selectedAddress) {
+    if (!houseArr || houseArr.length === 0) return '';
+    if (houseArr.length === 1) return String(houseArr[0]).trim();
+    var tokens = tokenizeAddress(selectedAddress);
+    for (var i = 0; i < houseArr.length; i++) {
+        var h = String(houseArr[i]).trim().toLowerCase();
+        for (var j = 0; j < tokens.length; j++) {
+            if (tokens[j] === h) {
+                if (isAdmin) diagLog('   house выбран: ' + houseArr[i] + ' (совпал с токеном)', 'ok');
+                return String(houseArr[i]).trim();
+            }
+        }
+    }
+    if (isAdmin) diagLog('   house fallback → ' + houseArr[0], 'warn');
+    return String(houseArr[0]).trim();
+}
+
+function pickMatchingStreet(streetArr, selectedAddress) {
+    if (!streetArr || streetArr.length === 0) return '';
+    if (streetArr.length === 1) return String(streetArr[0]).trim();
+    var addr = (selectedAddress || '').toLowerCase();
+    for (var i = 0; i < streetArr.length; i++) {
+        var s = String(streetArr[i]).trim().toLowerCase();
+        if (s && addr.indexOf(s) !== -1) {
+            if (isAdmin) diagLog('   street выбран: ' + streetArr[i] + ' (есть в адресе)', 'ok');
+            return String(streetArr[i]).trim();
+        }
+    }
+    if (isAdmin) diagLog('   street fallback → ' + streetArr[0], 'warn');
+    return String(streetArr[0]).trim();
+}
+
 var ORIENT_KINDS = [
     { kind: 'district', prefix: 'в районе ' },
     { kind: 'metro', prefix: 'рядом с ' },
@@ -339,28 +382,33 @@ function handleGeocoderData(data, baseJson, onDone) {
     var precision = meta.precision || '';
     var coords = baseJson.coords, link = baseJson.link;
 
+    var streetStr = pickMatchingStreet(streetArr, selectedAddress);
+    var houseStr = pickMatchingHouse(houseArr, selectedAddress);
+
+    if (isAdmin) diagLog('streetArr: ' + JSON.stringify(streetArr) + ' → ' + streetStr, 'info');
+    if (isAdmin) diagLog('houseArr: ' + JSON.stringify(houseArr) + ' → ' + houseStr, 'info');
+
     var localityIsCity = false;
     for (var i = 0; i < localityArr.length; i++) {
         if (isSelectedCity(localityArr[i], selectedCity)) { localityIsCity = true; break; }
     }
 
     if (localityIsCity) {
-        // 0.1 — locality = город, localityMode = "не требуется"
         if (districtArr.length > 0) {
             var district = buildDistrict(districtArr.slice());
-            if (houseArr.length > 0 && (streetArr.length > 0 || district.length > 0)) {
-                finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+            if (houseStr.length > 0 && (streetStr.length > 0 || district.length > 0)) {
+                finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
             } else {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
             }
         } else {
-            if (houseArr.length > 0 && streetArr.length > 0) {
+            if (houseStr.length > 0 && streetStr.length > 0) {
                 findOrient(coords, function(orientArr, prefix) {
                     if (!orientArr || orientArr.length === 0) {
                         finishFail('Не удалось найти ориентир. Уточните адрес.', onDone);
                         return;
                     }
-                    finishSuccess([prefix + orientArr.join(', ')], coords, link, streetArr, houseArr, precision, true, onDone);
+                    finishSuccess([prefix + orientArr.join(', ')], coords, link, streetStr, houseStr, precision, true, onDone);
                 });
             } else {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
@@ -377,13 +425,12 @@ function handleGeocoderData(data, baseJson, onDone) {
     }
 
     if (!areaMatches) {
-        // 0.2.2 — вне города, localityMode = "как дал Яндекс"
-        if (houseArr.length === 0) { finishFail('Введите точный адрес (номер дома).', onDone); return; }
-        var streetMissing = (streetArr.length === 0);
+        if (houseStr.length === 0) { finishFail('Введите точный адрес (номер дома).', onDone); return; }
+        var streetMissing = (streetStr.length === 0);
         var localityStr = localityArr.length > 0 ? localityArr[0] : '';
         var district = [];
         if (districtArr.length > 0) district = buildDistrict(districtArr.slice());
-        finishSuccessOutside(district, coords, link, streetArr, houseArr, precision, localityStr, streetMissing, onDone);
+        finishSuccessOutside(district, coords, link, streetStr, houseStr, precision, localityStr, streetMissing, onDone);
         return;
     }
 
@@ -396,16 +443,16 @@ function handleGeocoderData(data, baseJson, onDone) {
         localityNonCity.forEach(function(v) { values.push(v); });
         districtArr.forEach(function(v) { values.push(v); });
         var district = buildDistrict(values);
-        if (houseArr.length > 0 && (streetArr.length > 0 || district.length > 0)) {
-            finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+        if (houseStr.length > 0 && (streetStr.length > 0 || district.length > 0)) {
+            finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
         } else {
             finishFail('Введите точный адрес (улица и номер дома).', onDone);
         }
     } else {
         if (localityNonCity.length === 0) { finishFail('Не удалось определить ориентир.', onDone); return; }
         var district = [localityNonCity.join(', ')];
-        if (houseArr.length > 0) {
-            finishSuccess(district, coords, link, streetArr, houseArr, precision, true, onDone);
+        if (houseStr.length > 0) {
+            finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
         } else {
             finishFail('Введите адрес до конца (номер дома).', onDone);
         }
@@ -417,8 +464,8 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
         coords: coords,
         in_city: true,
         district: district.join(', '),
-        street: street[0] || '',
-        house: house[0] || '',
+        street: street,
+        house: house,
         is_exact: isExact,
         precision: precision,
         link: link
@@ -434,8 +481,8 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         in_city: false,
         locality: localityStr,
         district: district.join(', '),
-        street: street[0] || '',
-        house: house[0] || '',
+        street: street,
+        house: house,
         is_exact: true,
         precision: precision,
         link: link
@@ -468,7 +515,6 @@ function finishFail(message, onDone) {
     onDone(null, message);
 }
 
-// ===== СБОРКА СТРОКИ ДЛЯ ПЕРЕДАЧИ =====
 function buildTransferLine(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
     var district = (result.district && result.district.length > 0) ? result.district : NO_VALUE;
@@ -478,7 +524,6 @@ function buildTransferLine(result) {
     return [locality, district, street, house, link].join(DIVIDER);
 }
 
-// ===== КНОПКИ ПОПАПА =====
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
@@ -488,7 +533,7 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     pendingResult = null;
 
     var line = buildTransferLine(result);
-    if (isAdmin) diagLog('📤 Строка для передачи: ' + line, 'new');
+    if (isAdmin) diagLog('📤 Строка: ' + line, 'new');
 
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
@@ -498,12 +543,12 @@ document.getElementById('popup-ok').addEventListener('click', function() {
         '&user_id=' + encodeURIComponent(tgUserId);
 
     var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
-    if (isAdmin) diagLog('🌐 Отправка через corsproxy...', 'info');
+    if (isAdmin) diagLog('🌐 Отправка...', 'info');
 
     fetch(proxyUrl, { method: 'GET' })
         .then(function(r) { return r.text(); })
         .then(function(text) {
-            if (isAdmin) diagLog('✅ Ответ PuzzleBot: ' + text, 'ok');
+            if (isAdmin) diagLog('✅ Ответ: ' + text, 'ok');
             if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
             if (copyBtn) copyBtn.disabled = false;
             showWarning('✅ Адрес успешно найден и сохранён. Нажмите «Далее» для продолжения.', 'ok');
@@ -520,7 +565,7 @@ document.getElementById('popup-cancel').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
     pendingResult = null;
-    if (isAdmin) diagLog('❌ Пользователь отменил', 'warn');
+    if (isAdmin) diagLog('❌ Отменено', 'warn');
     selectedAddress = ''; selectedLink = ''; selectedCoords = null;
     addressInput.value = '';
     addressInput.disabled = false;
@@ -551,6 +596,8 @@ ymaps.ready(function () {
 
         selectedAddress = displayName || value;
         selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+        if (isAdmin) diagLog('👤 Выбран адрес: ' + selectedAddress, 'info');
 
         showWarning('⏳ Проверяем адрес...', 'warn');
         if (jsonOutput) jsonOutput.value = 'Загрузка...';
@@ -592,7 +639,7 @@ function fetchGeocoder(coords, baseJson, onDone) {
     var lon = coords[1], lat = coords[0];
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
         '&format=json&results=1&lang=ru_RU&geocode=' + lon + ',' + lat;
-    if (isAdmin) diagLog('🔄 Запрос Геокодера...', 'new');
+    if (isAdmin) diagLog('🔄 Геокодер...', 'new');
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
         handleGeocoderData(data, baseJson, onDone);
     }).catch(function(e) {
