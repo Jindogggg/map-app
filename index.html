@@ -9,68 +9,35 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 12px; }
 .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-width: 480px; width: 100%; margin: 0 auto; padding: 16px 14px 20px; }
-
 .admin-only { display: none !important; }
 .admin-mode .admin-only { display: block !important; }
-
-/* ШАПКА */
-#header {
-    padding: 12px;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    background: #e3f2fd;
-    color: #1565c0;
-    border: 2px solid #1976d2;
-    line-height: 1.5;
-}
-#header .version {
-    display: inline-block;
-    background: #1976d2;
-    color: #fff;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    margin-left: 6px;
-}
-
+#header { padding: 12px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; background: #e3f2fd; color: #1565c0; border: 2px solid #1976d2; line-height: 1.5; }
+#header .version { display: inline-block; background: #1976d2; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-left: 6px; }
 #diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; }
 #diag .ok { color: #7ee787; }
 #diag .err { color: #ff7b72; }
 #diag .info { color: #79c0ff; }
 #diag .warn { color: #ffa657; }
 #diag .new { color: #d2a8ff; font-weight: bold; }
-
-/* ЦВЕТНЫЕ ПЛАШКИ */
 #address-warning { font-size: 14px; line-height: 1.5; padding: 14px; border-radius: 10px; margin-bottom: 12px; display: none; font-weight: 600; }
 #address-warning.visible { display: block; }
 #address-warning.warn { background: #fff8e1; color: #8a6d00; border-left: 5px solid #f0a500; }
 #address-warning.error { background: #ffebee; color: #c62828; border-left: 5px solid #e53935; }
 #address-warning.ok { background: #e8f5e9; color: #2e7d32; border-left: 5px solid #43a047; }
-
-/* ПОЛЕ ВВОДА */
 #address-input { width: 100%; padding: 14px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 14px; outline: none; box-sizing: border-box; margin-bottom: 12px; }
 #address-input:focus { border-color: #2a5298; }
 #address-input.warning { border-color: #f0a500; }
 #address-input.error { border-color: #e53935; }
 #address-input:disabled { background: #f0f4fa; color: #8a9aa8; cursor: not-allowed; }
-
-/* КАРТА */
 #map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: #eef2f6; }
-
-/* JSON */
 .json-block { padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
 .json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
 #json-output { width: 100%; height: 300px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
-
-/* ПОПАП */
 #popup-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100000; padding: 20px; }
 #popup-overlay.visible { display: flex !important; }
-#popup { background: #fff; border-radius: 20px; padding: 24px 20px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); position: relative; z-index: 100001; }
+#popup { background: #fff; border-radius: 20px; padding: 24px 20px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
 #popup-title { font-size: 18px; font-weight: 700; color: #1e3c72; margin-bottom: 12px; text-align: center; }
 #popup-address { background: #f0f4fa; padding: 12px 14px; border-radius: 10px; font-size: 14px; color: #1e3c72; font-weight: 600; margin-bottom: 16px; text-align: center; word-break: break-word; line-height: 1.4; }
 #popup-text { font-size: 13px; line-height: 1.5; color: #555; margin-bottom: 20px; text-align: center; }
@@ -78,8 +45,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .popup-btn { flex: 1; padding: 12px; border: none; border-radius: 30px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .popup-btn-ok { background: #43a047; color: #fff; }
 .popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
-
-/* ПОДСКАЗКИ */
 .ymaps-suggest, .ymaps-suggest__list, .ymaps-suggest__item, [class*="suggest"] { white-space: normal !important; word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; text-overflow: clip !important; overflow: visible !important; height: auto !important; max-height: none !important; line-height: 1.4 !important; }
 .ymaps-suggest__list, [class*="suggest__list"] { max-height: 300px !important; overflow-y: auto !important; }
 .ymaps-suggest__item, [class*="suggest__item"] { padding: 10px 12px !important; border-bottom: 1px solid #eef2f6 !important; cursor: pointer !important; font-size: 13px !important; display: block !important; width: 100% !important; }
@@ -89,35 +54,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </head>
 <body>
 <div class="card">
-
-<!-- 1. ШАПКА -->
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v27</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v28</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
-
-<!-- 2. ЦВЕТНАЯ ПЛАШКА -->
 <div id="address-warning"></div>
-
-<!-- 3. ЛОГ (админ) -->
-<div id="diag" class="admin-only">=== v27 ===</div>
-
-<!-- 4. ПОЛЕ ВВОДА -->
+<div id="diag" class="admin-only">=== v28 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
-
-<!-- 5. КАРТА (админ) -->
 <div id="map" class="admin-only"></div>
-
-<!-- 6. JSON (админ) -->
 <div class="json-block admin-only">
     <div class="json-block-title">📋 JSON (только для админов):</div>
     <textarea id="json-output" readonly placeholder="Выберите точный адрес..."></textarea>
     <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
 </div>
-
 </div>
-
-<!-- ПОПАП -->
 <div id="popup-overlay">
     <div id="popup">
         <div id="popup-title">📍 Подтвердите адрес</div>
@@ -131,42 +81,45 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v27';
+var SCRIPT_VERSION = 'v28';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
 var CORSPROXY_KEY = 'ef2f568a';
 var DEFAULT_USER_ID = '0000000000';
 var DEFAULT_CITY = 'Краснодар';
+var DIVIDER = '§§§§§';
+var NO_LOCALITY = 'не требуется';
+var NO_VALUE = 'отсутствует';
 
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
 var IMPORTANT_TYPES = [
-    { field: 'stanitsa',      prefixes: ['станица', 'ст-ца'] },
-    { field: 'selo',          prefixes: ['село', 'с.'] },
-    { field: 'poselok',       prefixes: ['посёлок', 'поселок', 'п.'] },
-    { field: 'derevnya',      prefixes: ['деревня', 'д.'] },
-    { field: 'hutor',         prefixes: ['хутор', 'х.'] },
-    { field: 'aul',           prefixes: ['аул'] },
-    { field: 'kishlak',       prefixes: ['кишлак', 'к.'] },
-    { field: 'sloboda',       prefixes: ['слобода', 'сл.'] },
-    { field: 'mestechko',     prefixes: ['местечко', 'м.'] },
-    { field: 'mahalla',       prefixes: ['махалля', 'махаллинский'] },
-    { field: 'zhilrayon',     prefixes: ['жилой район', 'ж/р'] },
+    { field: 'stanitsa', prefixes: ['станица', 'ст-ца'] },
+    { field: 'selo', prefixes: ['село', 'с.'] },
+    { field: 'poselok', prefixes: ['посёлок', 'поселок', 'п.'] },
+    { field: 'derevnya', prefixes: ['деревня', 'д.'] },
+    { field: 'hutor', prefixes: ['хутор', 'х.'] },
+    { field: 'aul', prefixes: ['аул'] },
+    { field: 'kishlak', prefixes: ['кишлак', 'к.'] },
+    { field: 'sloboda', prefixes: ['слобода', 'сл.'] },
+    { field: 'mestechko', prefixes: ['местечко', 'м.'] },
+    { field: 'mahalla', prefixes: ['махалля', 'махаллинский'] },
+    { field: 'zhilrayon', prefixes: ['жилой район', 'ж/р'] },
     { field: 'microdistrict', prefixes: ['микрорайон', 'мкр', 'мкрн', 'мкр-н'] },
-    { field: 'massiv',        prefixes: ['массив', 'жилмассив', 'жилой массив'] }
+    { field: 'massiv', prefixes: ['массив', 'жилмассив', 'жилой массив'] }
 ];
 
 var UNIMPORTANT_TYPES = [
-    { field: 'kvartal',  prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
-    { field: 'zhk',      prefixes: ['жк', 'жилой комплекс', 'ж/к'] },
-    { field: 'tszh',     prefixes: ['тсж', 'тсн', 'товарищество собственников'] },
-    { field: 'snt',      prefixes: ['снт', 'садоводческое товарищество'] },
-    { field: 'dnt',      prefixes: ['днт', 'дачное некоммерческое товарищество'] },
-    { field: 'cottage',  prefixes: ['кп', 'коттеджный посёлок', 'коттеджный поселок'] },
+    { field: 'kvartal', prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
+    { field: 'zhk', prefixes: ['жк', 'жилой комплекс', 'ж/к'] },
+    { field: 'tszh', prefixes: ['тсж', 'тсн', 'товарищество собственников'] },
+    { field: 'snt', prefixes: ['снт', 'садоводческое товарищество'] },
+    { field: 'dnt', prefixes: ['днт', 'дачное некоммерческое товарищество'] },
+    { field: 'cottage', prefixes: ['кп', 'коттеджный посёлок', 'коттеджный поселок'] },
     { field: 'promzona', prefixes: ['промзона', 'промышленная зона'] },
-    { field: 'grad',     prefixes: ['град'] },
-    { field: 'gorodok',  prefixes: ['городок'] },
+    { field: 'grad', prefixes: ['град'] },
+    { field: 'gorodok', prefixes: ['городок'] },
     { field: 'district', prefixes: ['район'] }
 ];
 
@@ -190,6 +143,7 @@ var isTestMode = false;
 var isAdmin = false;
 var cityAreaRequested = false;
 var pendingResult = null;
+var pendingLocalityMode = 'не требуется';
 
 var headerId = document.getElementById('header-id');
 var headerCity = document.getElementById('header-city');
@@ -214,9 +168,7 @@ function checkAdmin(id) {
 function enableAdminMode() {
     isAdmin = true;
     document.body.classList.add('admin-mode');
-    if (typeof ymaps !== 'undefined' && !myMap) {
-        initMap();
-    }
+    if (typeof ymaps !== 'undefined' && !myMap) initMap();
 }
 
 function updateHeader() {
@@ -257,25 +209,16 @@ function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
     cityAreaRequested = true;
     diagLog('[0] Запрос area для «' + selectedCity + '»...', 'new');
-
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
         '&format=json&results=1&lang=ru_RU&kind=area&geocode=' + encodeURIComponent(selectedCity);
-
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
-        if (!data || !data.response || !data.response.GeoObjectCollection) {
-            diagLog('[0] ❌ Нет response', 'err');
-            return;
-        }
+        if (!data || !data.response || !data.response.GeoObjectCollection) { diagLog('[0] ❌ Нет response', 'err'); return; }
         var m = data.response.GeoObjectCollection.featureMember;
         if (!m || m.length === 0) { diagLog('[0] area не найдено', 'warn'); return; }
         var comps = m[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
-        for (var i = 0; i < comps.length; i++) {
-            if (comps[i].kind === 'area') { cityArea = comps[i].name; break; }
-        }
+        for (var i = 0; i < comps.length; i++) if (comps[i].kind === 'area') { cityArea = comps[i].name; break; }
         if (!cityArea) {
-            for (var j = 0; j < comps.length; j++) {
-                if (comps[j].kind === 'locality') { cityArea = comps[j].name; break; }
-            }
+            for (var j = 0; j < comps.length; j++) if (comps[j].kind === 'locality') { cityArea = comps[j].name; break; }
         }
         diagLog('[0] area города = «' + cityArea + '»', 'ok');
     }).catch(function(e) { diagLog('[0] Ошибка: ' + e.message, 'err'); });
@@ -299,9 +242,7 @@ function isSelectedCity(text, city) {
     var t = text.toLowerCase(), c = city.toLowerCase();
     if (t === c) return true;
     var words = t.split(/[\s,.\-()\/]+/);
-    for (var i = 0; i < words.length; i++) {
-        if (words[i] === c) return true;
-    }
+    for (var i = 0; i < words.length; i++) if (words[i] === c) return true;
     return false;
 }
 
@@ -321,20 +262,14 @@ function buildDistrict(values) {
         var imp = detectType(v, IMPORTANT_TYPES);
         if (imp) {
             for (var k = 0; k < IMPORTANT_TYPES.length; k++) {
-                if (IMPORTANT_TYPES[k].field === imp) {
-                    important.push({ name: v, priority: k });
-                    break;
-                }
+                if (IMPORTANT_TYPES[k].field === imp) { important.push({ name: v, priority: k }); break; }
             }
             return;
         }
         var uni = detectType(v, UNIMPORTANT_TYPES);
         if (uni) {
             for (var m = 0; m < UNIMPORTANT_TYPES.length; m++) {
-                if (UNIMPORTANT_TYPES[m].field === uni) {
-                    unimportant.push({ name: v, priority: m });
-                    break;
-                }
+                if (UNIMPORTANT_TYPES[m].field === uni) { unimportant.push({ name: v, priority: m }); break; }
             }
         }
     });
@@ -346,11 +281,11 @@ function buildDistrict(values) {
 }
 
 var ORIENT_KINDS = [
-    { kind: 'district',         prefix: 'в районе ' },
-    { kind: 'metro',            prefix: 'рядом с ' },
-    { kind: 'railwayStation',   prefix: 'недалеко от ' },
-    { kind: 'station',          prefix: 'рядом с ' },
-    { kind: 'street',           prefix: 'в районе ' }
+    { kind: 'district', prefix: 'в районе ' },
+    { kind: 'metro', prefix: 'рядом с ' },
+    { kind: 'railwayStation', prefix: 'недалеко от ' },
+    { kind: 'station', prefix: 'рядом с ' },
+    { kind: 'street', prefix: 'в районе ' }
 ];
 
 function findOrient(coords, callback) {
@@ -370,18 +305,12 @@ function findOrient(coords, callback) {
             if (item.kind === 'district') {
                 var districts = [];
                 comps.forEach(function(c) { if (c.kind === 'district') districts.push(c.name); });
-                if (districts.length > 0) {
-                    var sorted = buildDistrict(districts);
-                    callback(sorted, item.prefix);
-                    return;
-                }
+                if (districts.length > 0) { callback(buildDistrict(districts), item.prefix); return; }
                 tryKind(idx + 1);
                 return;
             }
             var found = null;
-            for (var i = 0; i < comps.length; i++) {
-                if (comps[i].kind === item.kind) { found = comps[i].name; break; }
-            }
+            for (var i = 0; i < comps.length; i++) if (comps[i].kind === item.kind) { found = comps[i].name; break; }
             if (found) callback([found], item.prefix);
             else tryKind(idx + 1);
         }).catch(function() { tryKind(idx + 1); });
@@ -416,6 +345,7 @@ function handleGeocoderData(data, baseJson, onDone) {
     }
 
     if (localityIsCity) {
+        // 0.1 — locality = город, localityMode = "не требуется"
         if (districtArr.length > 0) {
             var district = buildDistrict(districtArr.slice());
             if (houseArr.length > 0 && (streetArr.length > 0 || district.length > 0)) {
@@ -447,6 +377,7 @@ function handleGeocoderData(data, baseJson, onDone) {
     }
 
     if (!areaMatches) {
+        // 0.2.2 — вне города, localityMode = "как дал Яндекс"
         if (houseArr.length === 0) { finishFail('Введите точный адрес (номер дома).', onDone); return; }
         var streetMissing = (streetArr.length === 0);
         var localityStr = localityArr.length > 0 ? localityArr[0] : '';
@@ -481,18 +412,18 @@ function handleGeocoderData(data, baseJson, onDone) {
     }
 }
 
-// ===== УСПЕХ — ПОКАЗЫВАЕМ ПОПАП =====
 function finishSuccess(district, coords, link, street, house, precision, isExact, onDone) {
     var result = {
         coords: coords,
         in_city: true,
         district: district.join(', '),
-        street: street,
-        house: house,
+        street: street[0] || '',
+        house: house[0] || '',
         is_exact: isExact,
         precision: precision,
         link: link
     };
+    pendingLocalityMode = NO_LOCALITY;
     showPendingPopup(result, selectedAddress, false);
     onDone(result, null);
 }
@@ -503,12 +434,13 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         in_city: false,
         locality: localityStr,
         district: district.join(', '),
-        street: street,
-        house: house,
+        street: street[0] || '',
+        house: house[0] || '',
         is_exact: true,
         precision: precision,
         link: link
     };
+    pendingLocalityMode = localityStr || NO_VALUE;
     showPendingPopup(result, selectedAddress, streetMissing);
     onDone(result, null);
 }
@@ -516,7 +448,6 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
 function showPendingPopup(result, addressText, streetMissing) {
     pendingResult = result;
     if (popupAddress) popupAddress.textContent = addressText;
-
     var extraText = '';
     if (result.in_city === false) {
         extraText += '<br><br>⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
@@ -525,7 +456,6 @@ function showPendingPopup(result, addressText, streetMissing) {
         extraText += '<br><br>⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
     }
     if (popupText) popupText.innerHTML = 'Если адрес верный — нажмите «Подтвердить».' + extraText;
-
     if (popupOverlay) {
         popupOverlay.classList.add('visible');
         popupOverlay.style.display = 'flex';
@@ -538,6 +468,16 @@ function finishFail(message, onDone) {
     onDone(null, message);
 }
 
+// ===== СБОРКА СТРОКИ ДЛЯ ПЕРЕДАЧИ =====
+function buildTransferLine(result) {
+    var locality = pendingLocalityMode || NO_LOCALITY;
+    var district = (result.district && result.district.length > 0) ? result.district : NO_VALUE;
+    var street = (result.street && result.street.length > 0) ? result.street : NO_VALUE;
+    var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
+    var link = result.link || NO_VALUE;
+    return [locality, district, street, house, link].join(DIVIDER);
+}
+
 // ===== КНОПКИ ПОПАПА =====
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
@@ -547,18 +487,18 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     var result = pendingResult;
     pendingResult = null;
 
-    // Отправляем JSON строкой в PuzzleBot через corsproxy
-    if (isAdmin) diagLog('📤 Отправка JSON в ADD_APP_TEST...', 'new');
+    var line = buildTransferLine(result);
+    if (isAdmin) diagLog('📤 Строка для передачи: ' + line, 'new');
 
-    var jsonStr = JSON.stringify(result);
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
         '&method=variableChange' +
         '&variable=ADD_APP_TEST' +
-        '&expression=' + encodeURIComponent('%22' + jsonStr.replace(/"/g, '\\"') + '%22') +
+        '&expression=' + encodeURIComponent('"' + line + '"') +
         '&user_id=' + encodeURIComponent(tgUserId);
 
     var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
+    if (isAdmin) diagLog('🌐 Отправка через corsproxy...', 'info');
 
     fetch(proxyUrl, { method: 'GET' })
         .then(function(r) { return r.text(); })
@@ -589,7 +529,6 @@ document.getElementById('popup-cancel').addEventListener('click', function() {
     if (copyBtn) copyBtn.disabled = true;
 });
 
-// ===== КАРТА =====
 function initMap() {
     if (myMap || !isAdmin) return;
     myMap = new ymaps.Map('map', {
