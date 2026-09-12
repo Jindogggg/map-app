@@ -8,21 +8,18 @@
 body { font-family: -apple-system, sans-serif; padding: 20px; background: #f4f7fc; }
 .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 h2 { font-size: 18px; margin-bottom: 12px; color: #1e3c72; }
-p { font-size: 14px; line-height: 1.5; margin-bottom: 12px; }
 button { background: #1e3c72; color: #fff; border: none; border-radius: 30px; padding: 14px 20px; font-size: 15px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 10px; }
 button:disabled { background: #c0cbd9; }
-#log { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 11px; padding: 12px; border-radius: 8px; margin-top: 16px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; max-height: 300px; overflow-y: auto; }
+#log { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 11px; padding: 12px; border-radius: 8px; margin-top: 16px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; max-height: 400px; overflow-y: auto; }
 .ok { color: #7ee787; }
 .err { color: #ff7b72; }
 .info { color: #79c0ff; }
-input { width: 100%; padding: 12px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; margin-bottom: 10px; }
 </style>
 </head>
 <body>
 <div class="card">
-<h2>🧪 Тест передачи в PuzzleBot</h2>
-<p>Введи свой Telegram ID и нажми кнопку. Скрипт отправит слово <b>test</b> в переменную <b>ADD_APP_TEST</b> через прокси allorigins.win.</p>
-<input type="text" id="user-id" placeholder="Telegram ID (например, 1509864197)" value="1509864197">
+<h2>🧪 Тест через allorigins</h2>
+<p style="font-size:14px; margin-bottom:10px;">Отправит слово <b>test</b> в переменную <b>ADD_APP_TEST</b> пользователю <b>1509864197</b> через прокси allorigins.win</p>
 <button id="send-btn">Отправить тест</button>
 <div id="log">Готов к отправке...</div>
 </div>
@@ -40,30 +37,19 @@ function log(text, cls) {
 }
 
 document.getElementById('send-btn').addEventListener('click', function() {
-    var userId = document.getElementById('user-id').value.trim();
-    if (!userId) { alert('Введи Telegram ID'); return; }
-
     logEl.innerHTML = '=== НАЧАЛО ТЕСТА ===';
-
-    // Собираем URL для PuzzleBot
+    
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
         '&method=variableChange' +
         '&variable=ADD_APP_TEST' +
-        '&expression=test' +
-        '&user_id=' + encodeURIComponent(userId);
+        '&expression=%22test%22' +
+        '&user_id=1509864197';
 
-    log('Целевой URL PuzzleBot:', 'info');
-    log(targetUrl);
-    log('');
+    log('Целевой URL: ' + targetUrl, 'info');
 
-    // Оборачиваем в прокси
     var proxyUrl = CORS_PROXY + encodeURIComponent(targetUrl);
-    log('URL через прокси:', 'info');
-    log(proxyUrl);
-    log('');
-
-    // Отправляем запрос
+    log('URL через прокси: ' + proxyUrl, 'info');
     log('Отправка запроса...', 'info');
 
     fetch(proxyUrl, { method: 'GET' })
@@ -72,16 +58,13 @@ document.getElementById('send-btn').addEventListener('click', function() {
             return response.text();
         })
         .then(function(text) {
-            log('Ответ от PuzzleBot:', 'ok');
-            log(text);
-            log('');
+            log('Ответ: ' + text, 'ok');
             log('=== ТЕСТ ЗАВЕРШЁН ===', 'ok');
-            log('Проверь переменную ADD_APP_TEST в PuzzleBot.', 'info');
+            log('Проверь переменную ADD_APP_TEST.', 'info');
         })
         .catch(function(error) {
             log('❌ ОШИБКА: ' + error.message, 'err');
-            log('');
-            log('Если ошибка — прокси не сработал.', 'err');
+            log('Прокси не работает из GitHub.', 'err');
         });
 });
 </script>
