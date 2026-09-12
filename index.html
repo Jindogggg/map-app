@@ -657,4 +657,23 @@ function fetchGeocoder(coords, baseJson, onDone) {
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
         handleGeocoderData(data, baseJson, onDone);
     }).catch(function(e) {
-        if (isAdmin) diagLog('❌ Ошиб
+        if (isAdmin) diagLog('❌ Ошибка: ' + e.message, 'err');
+        onDone(null, e.message);
+    });
+}
+
+if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+        if (!jsonOutput.value || copyBtn.disabled) return;
+        jsonOutput.select();
+        jsonOutput.setSelectionRange(0, 999999);
+        try {
+            document.execCommand('copy');
+            copyBtn.textContent = '✅ Скопировано!';
+            setTimeout(function() { copyBtn.textContent = '📋 Скопировать JSON'; }, 2000);
+        } catch (e) {}
+    });
+}
+</script>
+</body>
+</html>
