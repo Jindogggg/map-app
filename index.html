@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v35</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v37</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v35 ===</div>
+<div id="diag" class="admin-only">=== v37 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v35';
+var SCRIPT_VERSION = 'v37';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -96,53 +96,159 @@ var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
 var OTHER_PREFIXES = ['снт', 'днт', 'тсж', 'тсн', 'кп', 'садоводческое', 'дачное', 'товарищество'];
 
+// ===== ВАЖНЫЕ ТИПЫ (все, от специфичных к общим) =====
+// Порядок важен: сначала специфичные префиксы, чтобы "посёлок городского типа" не попал в "посёлок"
 var IMPORTANT_TYPES = [
-    { field: 'stanitsa', prefixes: ['станица', 'ст-ца'] },
-    { field: 'selo', prefixes: ['село', 'с.'] },
-    { field: 'poselok', prefixes: ['посёлок', 'поселок', 'п.'] },
-    { field: 'derevnya', prefixes: ['деревня', 'д.'] },
-    { field: 'hutor', prefixes: ['хутор', 'х.'] },
-    { field: 'aul', prefixes: ['аул'] },
-    { field: 'kishlak', prefixes: ['кишлак', 'к.'] },
-    { field: 'sloboda', prefixes: ['слобода', 'сл.'] },
-    { field: 'mestechko', prefixes: ['местечко', 'м.'] },
-    { field: 'mahalla', prefixes: ['махалля', 'махаллинский'] },
-    { field: 'zhilrayon', prefixes: ['жилой район', 'ж/р'] },
-    { field: 'microdistrict', prefixes: ['микрорайон', 'мкр', 'мкрн', 'мкр-н'] },
-    { field: 'massiv', prefixes: ['массив', 'жилмассив', 'жилой массив'] }
+    { field: 'pgt',          prefixes: ['пгт', 'посёлок городского типа', 'поселок городского типа'] },
+    { field: 'gp',           prefixes: ['городской посёлок', 'городской поселок'] },
+    { field: 'rp',           prefixes: ['рабочий посёлок', 'рабочий поселок', 'заводской посёлок'] },
+    { field: 'dp',           prefixes: ['дачный посёлок', 'дачный поселок'] },
+    { field: 'cottage',      prefixes: ['коттеджный посёлок', 'коттеджный поселок'] },
+    { field: 'kurort',       prefixes: ['курортный посёлок', 'курортный поселок', 'кур. пос.'] },
+    { field: 'poselok',      prefixes: ['посёлок', 'поселок', 'п.', 'пос.'] },
+    { field: 'gorod',        prefixes: ['город '] },
+    { field: 'grad',         prefixes: ['град '] },
+    { field: 'stanitsa',     prefixes: ['станица', 'ст-ца'] },
+    { field: 'selo',         prefixes: ['село', 'с.'] },
+    { field: 'derevnya',     prefixes: ['деревня', 'д.', 'дер.'] },
+    { field: 'hutor',        prefixes: ['хутор', 'х.', 'хут.'] },
+    { field: 'aul',          prefixes: ['аул'] },
+    { field: 'kishlak',      prefixes: ['кишлак', 'киш.'] },
+    { field: 'sloboda',      prefixes: ['слобода', 'сл.'] },
+    { field: 'mestechko',    prefixes: ['местечко', 'мест.'] },
+    { field: 'agrogorodok',  prefixes: ['агрогородок', 'агр.'] },
+    { field: 'ayil',         prefixes: ['айыл'] },
+    { field: 'ayilAymak',    prefixes: ['айыльный аймак', 'айыльный'] },
+    { field: 'dzhamoat',     prefixes: ['джамоат', 'джам.'] },
+    { field: 'ulus',         prefixes: ['улус'] },
+    { field: 'mahallaSkhod', prefixes: ['махаллинский'] },
+    { field: 'mahalla',      prefixes: ['махалля'] },
+    { field: 'zhilrayon',    prefixes: ['жилой район', 'ж/р'] },
+    { field: 'microdistrict',prefixes: ['микрорайон', 'мкр', 'мкрн', 'мкр-н'] },
+    { field: 'zhilmassiv',   prefixes: ['жилой массив', 'жилмассив', 'ж/м', 'ж. массив', 'ж. масс.'] },
+    { field: 'massiv',       prefixes: ['массив', 'масс.'] }
 ];
 
+// ===== НЕВАЖНЫЕ ТИПЫ (один, от точного к общему, метро — последний) =====
 var UNIMPORTANT_TYPES = [
-    { field: 'kvartal', prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
-    { field: 'zhk', prefixes: ['жк', 'жилой комплекс', 'ж/к'] },
-    { field: 'tszh', prefixes: ['тсж', 'тсн', 'товарищество собственников'] },
-    { field: 'snt', prefixes: ['снт', 'садоводческое товарищество'] },
-    { field: 'dnt', prefixes: ['днт', 'дачное некоммерческое товарищество'] },
-    { field: 'cottage', prefixes: ['кп', 'коттеджный посёлок', 'коттеджный поселок'] },
-    { field: 'promzona', prefixes: ['промзона', 'промышленная зона'] },
-    { field: 'grad', prefixes: ['град'] },
-    { field: 'gorodok', prefixes: ['городок'] },
-    { field: 'district', prefixes: ['район'] }
+    { field: 'kvartal',        prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
+    { field: 'station',        prefixes: ['станция'] },
+    { field: 'railwayStation', prefixes: ['железнодорожная станция', 'ж/д ст'] },
+    { field: 'stationPoselok', prefixes: ['посёлок при станции', 'поселок при станции', 'пос. ст'] },
+    { field: 'stanciiPoselok', prefixes: ['станционный посёлок', 'станционный поселок', 'ст. пос.'] },
+    { field: 'zhk',            prefixes: ['жк', 'жилой комплекс', 'ж/к'] },
+    { field: 'tszh',           prefixes: ['тсж'] },
+    { field: 'tsn',            prefixes: ['тсн'] },
+    { field: 'snt',            prefixes: ['снт'] },
+    { field: 'dnt',            prefixes: ['днт'] },
+    { field: 'promzona',       prefixes: ['промзона', 'промышленная зона'] },
+    { field: 'gorodok',        prefixes: ['городок'] },
+    { field: 'district',       prefixes: ['район', 'р-н'] },
+    { field: 'metro',          prefixes: ['метро', 'мет.'] }
 ];
 
+// ===== СОКРАЩЕНИЯ (префикс + суффикс) =====
 var ABBREVIATIONS = [
+    // Префиксные (в начале строки)
+    { from: /^посёлок городского типа\s+/i, to: 'пгт ' },
+    { from: /^поселок городского типа\s+/i, to: 'пгт ' },
+    { from: /^пгт\s+/i, to: 'пгт ' },
+    { from: /^городской посёлок\s+/i, to: 'гп ' },
+    { from: /^городской поселок\s+/i, to: 'гп ' },
+    { from: /^рабочий посёлок\s+/i, to: 'рп ' },
+    { from: /^рабочий поселок\s+/i, to: 'рп ' },
+    { from: /^дачный посёлок\s+/i, to: 'дп ' },
+    { from: /^дачный поселок\s+/i, to: 'дп ' },
+    { from: /^коттеджный посёлок\s+/i, to: 'КП ' },
+    { from: /^коттеджный поселок\s+/i, to: 'КП ' },
+    { from: /^курортный посёлок\s+/i, to: 'кур. пос. ' },
+    { from: /^курортный поселок\s+/i, to: 'кур. пос. ' },
+    { from: /^посёлок\s+/i, to: 'пос. ' },
+    { from: /^поселок\s+/i, to: 'пос. ' },
     { from: /^станица\s+/i, to: 'ст-ца ' },
     { from: /^село\s+/i, to: 'с. ' },
-    { from: /^посёлок\s+/i, to: 'п. ' },
-    { from: /^поселок\s+/i, to: 'п. ' },
     { from: /^деревня\s+/i, to: 'д. ' },
     { from: /^хутор\s+/i, to: 'х. ' },
-    { from: /^проспект\s+/i, to: 'пр-кт ' },
+    { from: /^кишлак\s+/i, to: 'к. ' },
+    { from: /^слобода\s+/i, to: 'сл. ' },
+    { from: /^местечко\s+/i, to: 'м. ' },
+    { from: /^агрогородок\s+/i, to: 'агр. ' },
+    { from: /^айыльный аймак\s+/i, to: 'айыл. аймак ' },
+    { from: /^джамоат\s+/i, to: 'джам. ' },
+    { from: /^город\s+/i, to: 'г. ' },
+    { from: /^град\s+/i, to: 'г. ' },
+    { from: /^махаллинский сход\s+/i, to: 'махал. сход ' },
+    { from: /^жилой район\s+/i, to: 'ж/р ' },
+    { from: /^микрорайон\s+/i, to: 'мкр ' },
+    { from: /^жилой массив\s+/i, to: 'жилмассив ' },
+    { from: /^жилой квартал\s+/i, to: 'жил. кв-л ' },
+    { from: /^квартал\s+/i, to: 'кв-л ' },
+    { from: /^жилой комплекс\s+/i, to: 'ЖК ' },
+    { from: /^станционный посёлок\s+/i, to: 'ст. пос. ' },
+    { from: /^станционный поселок\s+/i, to: 'ст. пос. ' },
+    { from: /^посёлок при станции\s+/i, to: 'пос. ст ' },
+    { from: /^поселок при станции\s+/i, to: 'пос. ст ' },
+    { from: /^железнодорожная станция\s+/i, to: 'ж/д ст ' },
+    { from: /^станция\s+/i, to: 'ст. ' },
+    { from: /^промышленная зона\s+/i, to: 'пром. ' },
+    { from: /^промзона\s+/i, to: 'пром. ' },
+    { from: /^городок\s+/i, to: 'гор. ' },
+    { from: /^район\s+/i, to: 'р-н ' },
+    { from: /^метро\s+/i, to: 'мет. ' },
     { from: /^улица\s+/i, to: 'ул. ' },
+    { from: /^проспект\s+/i, to: 'пр-кт ' },
     { from: /^переулок\s+/i, to: 'пер. ' },
     { from: /^бульвар\s+/i, to: 'б-р ' },
     { from: /^шоссе\s+/i, to: 'ш. ' },
     { from: /^набережная\s+/i, to: 'наб. ' },
     { from: /^площадь\s+/i, to: 'пл. ' },
     { from: /^тупик\s+/i, to: 'туп. ' },
-    { from: /^микрорайон\s+/i, to: 'мкр ' },
-    { from: /^жилой район\s+/i, to: 'ж/р ' },
-    { from: /^жилой комплекс\s+/i, to: 'ЖК ' }
+    { from: /^проезд\s+/i, to: 'пр-д ' },
+    { from: /^аллея\s+/i, to: 'ал. ' },
+    { from: /^дорога\s+/i, to: 'дор. ' },
+    { from: /^линия\s+/i, to: 'лин. ' },
+    { from: /^разъезд\s+/i, to: 'рзд. ' },
+    { from: /^километр\s+/i, to: 'км ' },
+    { from: /^площадка\s+/i, to: 'пл-ка ' },
+    { from: /^участок\s+/i, to: 'уч-к ' },
+    // Суффиксные (в конце строки)
+    { from: /\s+посёлок городского типа(\s|$)/i, to: ' пгт$1' },
+    { from: /\s+поселок городского типа(\s|$)/i, to: ' пгт$1' },
+    { from: /\s+коттеджный посёлок(\s|$)/i, to: ' КП$1' },
+    { from: /\s+коттеджный поселок(\s|$)/i, to: ' КП$1' },
+    { from: /\s+курортный посёлок(\s|$)/i, to: ' кур. пос.$1' },
+    { from: /\s+курортный поселок(\s|$)/i, to: ' кур. пос.$1' },
+    { from: /\s+посёлок(\s|$)/i, to: ' пос.$1' },
+    { from: /\s+поселок(\s|$)/i, to: ' пос.$1' },
+    { from: /\s+станица(\s|$)/i, to: ' ст-ца$1' },
+    { from: /\s+село(\s|$)/i, to: ' с.$1' },
+    { from: /\s+деревня(\s|$)/i, to: ' д.$1' },
+    { from: /\s+хутор(\s|$)/i, to: ' х.$1' },
+    { from: /\s+кишлак(\s|$)/i, to: ' к.$1' },
+    { from: /\s+слобода(\s|$)/i, to: ' сл.$1' },
+    { from: /\s+местечко(\s|$)/i, to: ' м.$1' },
+    { from: /\s+город(\s|$)/i, to: ' г.$1' },
+    { from: /\s+град(\s|$)/i, to: ' г.$1' },
+    { from: /\s+жилой район(\s|$)/i, to: ' ж/р$1' },
+    { from: /\s+микрорайон(\s|$)/i, to: ' мкр$1' },
+    { from: /\s+жилой массив(\s|$)/i, to: ' жилмассив$1' },
+    { from: /\s+квартал(\s|$)/i, to: ' кв-л$1' },
+    { from: /\s+жилой комплекс(\s|$)/i, to: ' ЖК$1' },
+    { from: /\s+станция(\s|$)/i, to: ' ст.$1' },
+    { from: /\s+промзона(\s|$)/i, to: ' пром.$1' },
+    { from: /\s+городок(\s|$)/i, to: ' гор.$1' },
+    { from: /\s+район(\s|$)/i, to: ' р-н$1' },
+    { from: /\s+улица(\s|$)/i, to: ' ул.$1' },
+    { from: /\s+проспект(\s|$)/i, to: ' пр-кт$1' },
+    { from: /\s+переулок(\s|$)/i, to: ' пер.$1' },
+    { from: /\s+бульвар(\s|$)/i, to: ' б-р$1' },
+    { from: /\s+шоссе(\s|$)/i, to: ' ш.$1' },
+    { from: /\s+набережная(\s|$)/i, to: ' наб.$1' },
+    { from: /\s+площадь(\s|$)/i, to: ' пл.$1' },
+    { from: /\s+тупик(\s|$)/i, to: ' туп.$1' },
+    { from: /\s+проезд(\s|$)/i, to: ' пр-д$1' },
+    { from: /\s+аллея(\s|$)/i, to: ' ал.$1' },
+    { from: /\s+дорога(\s|$)/i, to: ' дор.$1' }
 ];
 
 function abbreviate(text) {
@@ -496,17 +602,18 @@ function handleGeocoderData(data, baseJson, onDone) {
     var streetArr = byKind.street || [];
     var houseArr = byKind.house || [];
     var otherArr = byKind.other || [];
+    var metroArr = byKind.metroStation || [];
     var precision = meta.precision || '';
     var coords = baseJson.coords, link = baseJson.link;
 
-    // ===== 1. СНАЧАЛА — ПРОВЕРКА "locality = город?" по СЫРОМУ массиву =====
+    // ===== 1. СНАЧАЛА — ПРОВЕРКА "locality = город?" =====
     var localityIsCity = false;
     for (var i = 0; i < localityArrRaw.length; i++) {
         if (isSelectedCity(localityArrRaw[i], selectedCity)) { localityIsCity = true; break; }
     }
-    diagLog('localityIsCity: ' + localityIsCity + ' (проверка по сырому массиву)', 'new');
+    diagLog('localityIsCity: ' + localityIsCity, 'new');
 
-    // ===== 2. ПОТОМ — ФИЛЬТРАЦИЯ locality =====
+    // ===== 2. ФИЛЬТРАЦИЯ locality =====
     var localityArr = [];
     var localityAsDistrict = [];
 
@@ -529,7 +636,7 @@ function handleGeocoderData(data, baseJson, onDone) {
         localityAsDistrict.forEach(function(v) { districtArr.push(v); });
     }
 
-    // ===== 3. ФИЛЬТРАЦИЯ otherArr по префиксам =====
+    // ===== 3. ФИЛЬТРАЦИЯ other по префиксам =====
     otherArr.forEach(function(v) {
         if (startsWithOtherPrefix(v)) {
             districtArr.push(v);
@@ -539,7 +646,13 @@ function handleGeocoderData(data, baseJson, onDone) {
         }
     });
 
-    // ===== 4. ДЕДУП districtArr =====
+    // ===== 4. МЕТРО из Components =====
+    metroArr.forEach(function(v) {
+        districtArr.push('метро ' + v);
+        diagLog('   metroStation→district: метро ' + v, 'ok');
+    });
+
+    // ===== 5. ДЕДУП districtArr =====
     var seen = {};
     districtArr = districtArr.filter(function(v) {
         var key = v.toLowerCase();
