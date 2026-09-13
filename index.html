@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 <title>Выбор адреса</title>
-<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2&load=package.full,SuggestView" type="text/javascript"></script>
+<script async src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2&load=package.full,SuggestView" type="text/javascript"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f7fc; padding: 12px; }
@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v30</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v32</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v30 ===</div>
+<div id="diag" class="admin-only">=== v32 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v30';
+var SCRIPT_VERSION = 'v32';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -144,6 +144,9 @@ var isAdmin = false;
 var cityAreaRequested = false;
 var pendingResult = null;
 var pendingLocalityMode = 'не требуется';
+var idConfirmed = false;
+var cityConfirmed = false;
+var suggestViewCreated = false;
 
 var headerId = document.getElementById('header-id');
 var headerCity = document.getElementById('header-city');
@@ -155,7 +158,27 @@ var popupOverlay = document.getElementById('popup-overlay');
 var popupAddress = document.getElementById('popup-address');
 var popupText = document.getElementById('popup-text');
 
-diagLog(SCRIPT_VERSION + ' старт', 'info');
+diagLog(SCRIPT_VERSION + ' старт (скрипт запущен)', 'info');
+
+// === СЛУШАТЕЛЬ СООБЩЕНИЙ — РАБОТАЕТ СРАЗУ, ДО ЗАГРУЗКИ YANDEX API ===
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'TG_USER_ID') {
+        tgUserId = event.data.userId;
+        idConfirmed = true;
+        if (checkAdmin(tgUserId)) enableAdminMode();
+        diagLog('user_id = ' + tgUserId + (isAdmin ? ' (АДМИН)' : ''), isAdmin ? 'ok' : 'info');
+        updateHeader();
+        sendConfirmation();
+    }
+    if (event.data && event.data.type === 'CITY') {
+        selectedCity = event.data.city || '';
+        cityConfirmed = true;
+        diagLog('city = ' + selectedCity, 'ok');
+        updateHeader();
+        requestCityArea();
+        sendConfirmation();
+    }
+});
 
 function checkAdmin(id) {
     if (!id) return false;
@@ -168,7 +191,7 @@ function checkAdmin(id) {
 function enableAdminMode() {
     isAdmin = true;
     document.body.classList.add('admin-mode');
-    if (typeof ymaps !== 'undefined' && !myMap) initMap();
+    if (typeof ymaps !== 'undefined' && ymaps.Map && !myMap) initMap();
 }
 
 function updateHeader() {
@@ -177,33 +200,107 @@ function updateHeader() {
     if (headerCity) headerCity.textContent = selectedCity || '...';
 }
 
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'TG_USER_ID') {
-        tgUserId = event.data.userId;
-        if (checkAdmin(tgUserId)) enableAdminMode();
-        diagLog('user_id = ' + tgUserId + (isAdmin ? ' (АДМИН)' : ''), isAdmin ? 'ok' : 'info');
-        updateHeader();
+function sendConfirmation() {
+    try {
+        window.parent.postMessage({ type: 'CONTEXT_RECEIVED' }, '*');
+        diagLog('📤 Отправлено CONTEXT_RECEIVED', 'info');
+    } catch(e) {}
+}
+
+// === ЖДЁМ ЗАГРУЗКИ YANDEX API (polling) ===
+function waitForYmaps(cb) {
+    if (typeof ymaps !== 'undefined' && ymaps.ready) {
+        ymaps.ready(cb);
+        return;
     }
-    if (event.data && event.data.type === 'CITY') {
-        selectedCity = event.data.city || '';
-        diagLog('city = ' + selectedCity, 'ok');
-        updateHeader();
-        requestCityArea();
-    }
+    var attempts = 0;
+    var iv = setInterval(function() {
+        attempts++;
+        if (typeof ymaps !== 'undefined' && ymaps.ready) {
+            clearInterval(iv);
+            diagLog('✅ Yandex API загрузился (попыток: ' + attempts + ')', 'ok');
+            ymaps.ready(cb);
+        } else if (attempts > 600) {
+            clearInterval(iv);
+            diagLog('❌ Yandex API не загрузился за 60 сек', 'err');
+            showWarning('❌ Не удалось загрузить карту. Обновите страницу.', 'error');
+        }
+    }, 100);
+}
+
+waitForYmaps(function () {
+    diagLog('ymaps готов ✅', 'ok');
+    if (isAdmin) initMap();
+    createSuggestView();
 });
 
+function createSuggestView() {
+    if (suggestViewCreated) return;
+    if (typeof ymaps.SuggestView === 'undefined') {
+        diagLog('❌ SuggestView не доступен', 'err');
+        return;
+    }
+    try {
+        var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
+        suggestViewCreated = true;
+        diagLog('✅ SuggestView создан', 'ok');
+
+        suggestView.events.add('select', function (e) {
+            var item = e.get('item');
+            var value = item.value;
+            var displayName = item.displayName || value;
+
+            selectedAddress = displayName || value;
+            selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+
+            if (isAdmin) diagLog('👤 Выбран адрес: ' + selectedAddress, 'info');
+
+            showWarning('⏳ Проверяем адрес...', 'warn');
+            if (jsonOutput) jsonOutput.value = 'Загрузка...';
+            if (copyBtn) copyBtn.disabled = true;
+
+            ymaps.geocode(value, { results: 1 }).then(function (res) {
+                var g = res.geoObjects.get(0);
+                if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
+                var coords = g.geometry.getCoordinates();
+                selectedCoords = coords;
+                if (myMap && isAdmin) {
+                    myMap.setCenter(coords, 16);
+                    myPlacemark.geometry.setCoordinates(coords);
+                }
+
+                fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
+                    if (result) {
+                        if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
+                        if (copyBtn) copyBtn.disabled = false;
+                    }
+                });
+            }).catch(function(e) {
+                showWarning('❌ Ошибка: ' + e.message, 'error');
+            });
+        });
+    } catch(e) {
+        diagLog('❌ Ошибка создания SuggestView: ' + e.message, 'err');
+    }
+}
+
+// === ТЕСТ-РЕЖИМ — через 2 СЕКУНДЫ (если ID/город не пришли) ===
 setTimeout(function () {
+    if (idConfirmed && cityConfirmed) {
+        diagLog('✅ ID и город получены из PuzzleBot', 'ok');
+        return;
+    }
     var need = false;
     if (!tgUserId) { tgUserId = DEFAULT_USER_ID; need = true; }
     if (!selectedCity) { selectedCity = DEFAULT_CITY; need = true; }
     if (need) {
         isTestMode = true;
         enableAdminMode();
-        diagLog('🧪 ТЕСТ-РЕЖИМ', 'warn');
+        diagLog('🧪 ТЕСТ-РЕЖИМ (браузер)', 'warn');
         updateHeader();
     }
     requestCityArea();
-}, 3000);
+}, 2000);
 
 function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
@@ -299,12 +396,11 @@ function pickMatchingHouse(houseArr, selectedAddress) {
         var h = String(houseArr[i]).trim().toLowerCase();
         for (var j = 0; j < tokens.length; j++) {
             if (tokens[j] === h) {
-                if (isAdmin) diagLog('   house выбран: ' + houseArr[i] + ' (совпал с токеном)', 'ok');
+                if (isAdmin) diagLog('   house выбран: ' + houseArr[i], 'ok');
                 return String(houseArr[i]).trim();
             }
         }
     }
-    if (isAdmin) diagLog('   house fallback → ' + houseArr[0], 'warn');
     return String(houseArr[0]).trim();
 }
 
@@ -315,11 +411,10 @@ function pickMatchingStreet(streetArr, selectedAddress) {
     for (var i = 0; i < streetArr.length; i++) {
         var s = String(streetArr[i]).trim().toLowerCase();
         if (s && addr.indexOf(s) !== -1) {
-            if (isAdmin) diagLog('   street выбран: ' + streetArr[i] + ' (есть в адресе)', 'ok');
+            if (isAdmin) diagLog('   street выбран: ' + streetArr[i], 'ok');
             return String(streetArr[i]).trim();
         }
     }
-    if (isAdmin) diagLog('   street fallback → ' + streetArr[0], 'warn');
     return String(streetArr[0]).trim();
 }
 
@@ -576,64 +671,17 @@ document.getElementById('popup-cancel').addEventListener('click', function() {
 
 function initMap() {
     if (myMap || !isAdmin) return;
-    myMap = new ymaps.Map('map', {
-        center: [45.035470, 38.975313], zoom: 12, controls: ['zoomControl']
-    });
-    myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
-    myMap.geoObjects.add(myPlacemark);
-}
-
-ymaps.ready(function () {
-    diagLog('ymaps готов ✅', 'ok');
-    if (isAdmin) initMap();
-
-    var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
-
-    suggestView.events.add('select', function (e) {
-        var item = e.get('item');
-        var value = item.value;
-        var displayName = item.displayName || value;
-
-        selectedAddress = displayName || value;
-        selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
-
-        if (isAdmin) diagLog('👤 Выбран адрес: ' + selectedAddress, 'info');
-
-        showWarning('⏳ Проверяем адрес...', 'warn');
-        if (jsonOutput) jsonOutput.value = 'Загрузка...';
-        if (copyBtn) copyBtn.disabled = true;
-
-        ymaps.geocode(value, { results: 1 }).then(function (res) {
-            var g = res.geoObjects.get(0);
-            if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
-            var coords = g.geometry.getCoordinates();
-            selectedCoords = coords;
-            if (myMap && isAdmin) {
-                myMap.setCenter(coords, 16);
-                myPlacemark.geometry.setCoordinates(coords);
-            }
-
-            fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
-                if (result) {
-                    if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
-                    if (copyBtn) copyBtn.disabled = false;
-                }
-            });
-        }).catch(function(e) {
-            showWarning('❌ Ошибка: ' + e.message, 'error');
+    if (typeof ymaps === 'undefined' || !ymaps.Map) return;
+    try {
+        myMap = new ymaps.Map('map', {
+            center: [45.035470, 38.975313], zoom: 12, controls: ['zoomControl']
         });
-    });
-
-    addressInput.addEventListener('input', function() {
-        if (addressInput.disabled) return;
-        if (selectedAddress) {
-            selectedAddress = ''; selectedLink = '';
-            showWarning('', '');
-            if (jsonOutput) jsonOutput.value = '';
-            if (copyBtn) copyBtn.disabled = true;
-        }
-    });
-});
+        myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
+        myMap.geoObjects.add(myPlacemark);
+    } catch(e) {
+        diagLog('❌ Ошибка создания карты: ' + e.message, 'err');
+    }
+}
 
 function fetchGeocoder(coords, baseJson, onDone) {
     var lon = coords[1], lat = coords[0];
