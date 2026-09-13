@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v39</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v42</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v39 ===</div>
+<div id="diag" class="admin-only">=== v42 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v39';
+var SCRIPT_VERSION = 'v42';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -142,6 +142,164 @@ var UNIMPORTANT_TYPES = [
     { field: 'gorodok',        prefixes: ['городок'] },
     { field: 'district',       prefixes: ['район', 'р-н'] },
     { field: 'metro',          prefixes: ['метро', 'мет.'] }
+];
+
+var STREET_SUFFIXES = [
+    { pattern: /\s+улица\s*$/i, abbr: 'ул. ' },
+    { pattern: /\s+проспект\s*$/i, abbr: 'пр-кт ' },
+    { pattern: /\s+переулок\s*$/i, abbr: 'пер. ' },
+    { pattern: /\s+бульвар\s*$/i, abbr: 'б-р ' },
+    { pattern: /\s+шоссе\s*$/i, abbr: 'ш. ' },
+    { pattern: /\s+набережная\s*$/i, abbr: 'наб. ' },
+    { pattern: /\s+площадь\s*$/i, abbr: 'пл. ' },
+    { pattern: /\s+тупик\s*$/i, abbr: 'туп. ' },
+    { pattern: /\s+проезд\s*$/i, abbr: 'пр-д ' },
+    { pattern: /\s+аллея\s*$/i, abbr: 'ал. ' },
+    { pattern: /\s+дорога\s*$/i, abbr: 'дор. ' },
+    { pattern: /\s+линия\s*$/i, abbr: 'лин. ' },
+    { pattern: /\s+разъезд\s*$/i, abbr: 'рзд. ' },
+    { pattern: /\s+тракт\s*$/i, abbr: 'тракт ' },
+    { pattern: /\s+просек\s*$/i, abbr: 'просек ' },
+    { pattern: /\s+проселок\s*$/i, abbr: 'проселок ' },
+    { pattern: /\s+проулок\s*$/i, abbr: 'проулок ' },
+    { pattern: /\s+кольцо\s*$/i, abbr: 'кольцо ' },
+    { pattern: /\s+спуск\s*$/i, abbr: 'спуск ' },
+    { pattern: /\s+въезд\s*$/i, abbr: 'въезд ' },
+    { pattern: /\s+заезд\s*$/i, abbr: 'заезд ' }
+];
+
+// ===== ПРЕФИКСЫ ДЛЯ УДАЛЕНИЯ (только для поисковой ссылки) =====
+var PREFIXES_TO_STRIP = [
+    // Наши служебные приписки
+    /^в районе\s+/i,
+    /^рядом с\s+/i,
+    /^недалеко от\s+/i,
+    // Геопрефиксы населённых пунктов
+    /^город\s+/i,
+    /^град\s+/i,
+    /^станица\s+/i,
+    /^ст-ца\s+/i,
+    /^село\s+/i,
+    /^с\.\s+/i,
+    /^посёлок городского типа\s+/i,
+    /^поселок городского типа\s+/i,
+    /^пгт\s+/i,
+    /^городской посёлок\s+/i,
+    /^городской поселок\s+/i,
+    /^гп\s+/i,
+    /^рабочий посёлок\s+/i,
+    /^рабочий поселок\s+/i,
+    /^рп\s+/i,
+    /^дачный посёлок\s+/i,
+    /^дачный поселок\s+/i,
+    /^дп\s+/i,
+    /^коттеджный посёлок\s+/i,
+    /^коттеджный поселок\s+/i,
+    /^курортный посёлок\s+/i,
+    /^курортный поселок\s+/i,
+    /^кур\. пос\.\s+/i,
+    /^посёлок\s+/i,
+    /^поселок\s+/i,
+    /^пос\.\s+/i,
+    /^деревня\s+/i,
+    /^дер\.\s+/i,
+    /^д\.\s+/i,
+    /^хутор\s+/i,
+    /^хут\.\s+/i,
+    /^х\.\s+/i,
+    /^аул\s+/i,
+    /^кишлак\s+/i,
+    /^киш\.\s+/i,
+    /^слобода\s+/i,
+    /^сл\.\s+/i,
+    /^местечко\s+/i,
+    /^мест\.\s+/i,
+    /^агрогородок\s+/i,
+    /^агр\.\s+/i,
+    /^айыл\s+/i,
+    /^айыльный аймак\s+/i,
+    /^джамоат\s+/i,
+    /^джам\.\s+/i,
+    /^улус\s+/i,
+    /^махаллинский сход\s+/i,
+    /^махалля\s+/i,
+    // Внутригородские
+    /^жилой район\s+/i,
+    /^ж\/р\s+/i,
+    /^микрорайон\s+/i,
+    /^мкр\s+/i,
+    /^жилой массив\s+/i,
+    /^жилмассив\s+/i,
+    /^ж\/м\s+/i,
+    /^массив\s+/i,
+    /^масс\.\s+/i,
+    // Неофициальные
+    /^жилой квартал\s+/i,
+    /^жил\. кв-л\s+/i,
+    /^квартал\s+/i,
+    /^кв-л\s+/i,
+    /^кв\.\s+/i,
+    /^жилой комплекс\s+/i,
+    /^жк\s+/i,
+    /^ж\/к\s+/i,
+    /^тсж\s+/i,
+    /^тсн\s+/i,
+    /^снт\s+/i,
+    /^днт\s+/i,
+    /^кп\s+/i,
+    // Станции
+    /^станционный посёлок\s+/i,
+    /^станционный поселок\s+/i,
+    /^ст\. пос\.\s+/i,
+    /^посёлок при станции\s+/i,
+    /^поселок при станции\s+/i,
+    /^пос\. ст\s+/i,
+    /^железнодорожная станция\s+/i,
+    /^ж\/д ст\s+/i,
+    /^станция\s+/i,
+    /^ст\.\s+/i,
+    /^метро\s+/i,
+    /^мет\.\s+/i,
+    /^промышленная зона\s+/i,
+    /^промзона\s+/i,
+    /^пром\.\s+/i,
+    /^городок\s+/i,
+    /^гор\.\s+/i,
+    /^район\s+/i,
+    /^р-н\s+/i,
+    // Улицы
+    /^улица\s+/i,
+    /^ул\.\s+/i,
+    /^проспект\s+/i,
+    /^пр-кт\s+/i,
+    /^проезд\s+/i,
+    /^пр-д\s+/i,
+    /^переулок\s+/i,
+    /^пер\.\s+/i,
+    /^бульвар\s+/i,
+    /^б-р\s+/i,
+    /^шоссе\s+/i,
+    /^ш\.\s+/i,
+    /^набережная\s+/i,
+    /^наб\.\s+/i,
+    /^площадь\s+/i,
+    /^пл\.\s+/i,
+    /^тупик\s+/i,
+    /^туп\.\s+/i,
+    /^аллея\s+/i,
+    /^ал\.\s+/i,
+    /^дорога\s+/i,
+    /^дор\.\s+/i,
+    /^линия\s+/i,
+    /^лин\.\s+/i,
+    /^разъезд\s+/i,
+    /^рзд\.\s+/i,
+    /^километр\s+/i,
+    /^км\s+/i,
+    /^площадка\s+/i,
+    /^пл-ка\s+/i,
+    /^участок\s+/i,
+    /^уч-к\s+/i
 ];
 
 var ABBREVIATIONS = [
@@ -254,6 +412,40 @@ function abbreviate(text) {
     return result;
 }
 
+function abbreviateStreet(text) {
+    if (!text) return text;
+    var result = String(text).trim();
+    for (var i = 0; i < STREET_SUFFIXES.length; i++) {
+        if (STREET_SUFFIXES[i].pattern.test(result)) {
+            var stripped = result.replace(STREET_SUFFIXES[i].pattern, '').trim();
+            result = STREET_SUFFIXES[i].abbr + stripped;
+            break;
+        }
+    }
+    return abbreviate(result);
+}
+
+// ===== УДАЛЕНИЕ ВСЕХ ПРЕФИКСОВ (только для поисковой ссылки) =====
+function stripPrefixes(text) {
+    if (!text) return text;
+    var result = String(text).trim();
+    var iterations = 0;
+    var changed = true;
+    while (changed && iterations < 15) {
+        changed = false;
+        for (var i = 0; i < PREFIXES_TO_STRIP.length; i++) {
+            var newResult = result.replace(PREFIXES_TO_STRIP[i], '');
+            if (newResult !== result) {
+                result = newResult.trim();
+                changed = true;
+                break;
+            }
+        }
+        iterations++;
+    }
+    return result.trim();
+}
+
 var diag = document.getElementById('diag');
 function diagLog(text, cls) {
     if (!diag) return;
@@ -269,7 +461,6 @@ var selectedCity = urlParams.get('city') || '';
 if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = '';
 if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
 
-// ===== МАССИВ ВСЕХ AREA ГОРОДА =====
 var cityAreaArr = [];
 
 var selectedAddress = '';
@@ -408,7 +599,6 @@ function createSuggestView() {
     }
 }
 
-// ===== ЗАПРОС AREA ГОРОДА — СОБИРАЕМ ВСЕ =====
 function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
     cityAreaRequested = true;
@@ -426,7 +616,6 @@ function requestCityArea() {
                 cityAreaArr.push(comps[i].name);
             }
         }
-        // Если area нет — берём locality как fallback
         if (cityAreaArr.length === 0) {
             for (var j = 0; j < comps.length; j++) {
                 if (comps[j].kind === 'locality') {
@@ -547,7 +736,6 @@ function pickMatchingStreet(streetArr, selectedAddress) {
     return String(streetArr[0]).trim();
 }
 
-// ===== СРАВНЕНИЕ AREA: ВСЕ ПАРЫ =====
 function areasMatch(addressAreaArr) {
     if (!cityAreaArr || cityAreaArr.length === 0) return false;
     if (!addressAreaArr || addressAreaArr.length === 0) return false;
@@ -716,7 +904,6 @@ function handleGeocoderData(data, baseJson, onDone) {
         return;
     }
 
-    // ===== 0.2 — СРАВНИВАЕМ ВСЕ ПАРЫ AREA =====
     diagLog('=== [0.2] Сравнение area ===', 'new');
     var areaMatches = areasMatch(areaArr);
 
@@ -767,6 +954,8 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
         link: link
     };
     pendingLocalityMode = NO_LOCALITY;
+    // Формируем поисковую ссылку сразу
+    result.link_search = buildSearchLink(result, NO_LOCALITY);
     showPendingPopup(result, selectedAddress, false);
     onDone(result, null);
 }
@@ -784,8 +973,43 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         link: link
     };
     pendingLocalityMode = localityStr || NO_VALUE;
+    // Формируем поисковую ссылку сразу
+    result.link_search = buildSearchLink(result, localityStr);
     showPendingPopup(result, selectedAddress, streetMissing);
     onDone(result, null);
+}
+
+// ===== ПОИСКОВАЯ ССЫЛКА =====
+function buildSearchLink(result, localityValue) {
+    var parts = [];
+
+    // Локалити — если "не требуется" или "отсутствует", берём selectedCity
+    var loc = localityValue || '';
+    if (!loc || loc === NO_LOCALITY || loc === NO_VALUE) {
+        loc = selectedCity;
+    }
+    var cleanLoc = stripPrefixes(loc);
+    if (cleanLoc.length > 0) parts.push(cleanLoc);
+
+    // District
+    if (result.district && result.district.length > 0 && result.district !== NO_VALUE) {
+        var cleanDist = stripPrefixes(result.district);
+        if (cleanDist.length > 0) parts.push(cleanDist);
+    }
+
+    // Street
+    if (result.street && result.street.length > 0 && result.street !== NO_VALUE) {
+        var cleanStreet = stripPrefixes(result.street);
+        if (cleanStreet.length > 0) parts.push(cleanStreet);
+    }
+
+    // House — без очистки
+    if (result.house && result.house.length > 0 && result.house !== NO_VALUE) {
+        parts.push(result.house);
+    }
+
+    var query = parts.join(', ');
+    return 'https://yandex.ru/maps/?text=' + encodeURIComponent(query);
 }
 
 function showPendingPopup(result, addressText, streetMissing) {
@@ -803,7 +1027,10 @@ function showPendingPopup(result, addressText, streetMissing) {
         popupOverlay.classList.add('visible');
         popupOverlay.style.display = 'flex';
     }
-    if (isAdmin) diagLog('📍 Показан попап: ' + addressText, 'new');
+    if (isAdmin) {
+        diagLog('📍 Показан попап: ' + addressText, 'new');
+        if (result.link_search) diagLog('🔍 Поисковая ссылка: ' + result.link_search, 'info');
+    }
 }
 
 function finishFail(message, onDone) {
@@ -817,10 +1044,30 @@ function buildTransferLine(result) {
         locality = abbreviate(locality);
     }
     var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
-    var street = (result.street && result.street.length > 0) ? abbreviate(result.street) : NO_VALUE;
+    var street = (result.street && result.street.length > 0) ? abbreviateStreet(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
-    var link = result.link || NO_VALUE;
-    return [locality, district, street, house, link].join(DIVIDER);
+    var link = (result.link && result.link.length > 0) ? result.link : NO_VALUE;
+    var linkSearch = (result.link_search && result.link_search.length > 0) ? result.link_search : NO_VALUE;
+    return [locality, district, street, house, link, linkSearch].join(DIVIDER);
+}
+
+function describePuzzleBotCode(code) {
+    var codes = {
+        0: 'успех',
+        1: 'неверный формат токена',
+        2: 'неверный формат метода',
+        3: 'токен не найден',
+        4: 'неизвестный метод',
+        40: 'не передан user_id или tg_chat_id',
+        100: 'внутренняя ошибка PuzzleBot',
+        102: 'ошибка вычисления expression',
+        104: 'переменная не найдена',
+        200: 'команда не найдена',
+        201: 'пользователь не найден',
+        202: 'чат не найден',
+        429: 'слишком много запросов'
+    };
+    return codes[code] || 'неизвестный код';
 }
 
 document.getElementById('popup-ok').addEventListener('click', function() {
@@ -832,7 +1079,7 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     pendingResult = null;
 
     var line = buildTransferLine(result);
-    if (isAdmin) diagLog('📤 Строка: ' + line, 'new');
+    if (isAdmin) diagLog('📤 Строка (6 полей): ' + line, 'new');
 
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
@@ -844,10 +1091,45 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
     if (isAdmin) diagLog('🌐 Отправка...', 'info');
 
+    showWarning('⏳ Сохраняем адрес...', 'warn');
+
     fetch(proxyUrl, { method: 'GET' })
         .then(function(r) { return r.text(); })
         .then(function(text) {
-            if (isAdmin) diagLog('✅ Ответ: ' + text, 'ok');
+            if (isAdmin) diagLog('📥 Ответ (сырой): ' + text, 'info');
+
+            var parsed;
+            try {
+                parsed = JSON.parse(text);
+            } catch (e) {
+                if (isAdmin) diagLog('❌ Ответ не JSON. CorsProxy вернул что-то не то.', 'err');
+                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+                return;
+            }
+
+            if (parsed.error) {
+                if (isAdmin) diagLog('❌ Ошибка CorsProxy: ' + parsed.error, 'err');
+                if (isAdmin) diagLog('   Что это значит: прокси-сервер не пропустил запрос (лимит, блокировка или настройки).', 'err');
+                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+                return;
+            }
+
+            if (parsed.code === undefined) {
+                if (isAdmin) diagLog('❌ В ответе нет поля code. Что-то не так.', 'err');
+                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+                return;
+            }
+
+            if (parsed.code !== 0) {
+                if (isAdmin) diagLog('❌ Ошибка PuzzleBot. Код: ' + parsed.code + ' (' + describePuzzleBotCode(parsed.code) + ')', 'err');
+                if (parsed.description) {
+                    if (isAdmin) diagLog('   Описание: ' + parsed.description, 'err');
+                }
+                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+                return;
+            }
+
+            if (isAdmin) diagLog('✅ PuzzleBot ответил: код 0 (успех)', 'ok');
             if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
             if (copyBtn) copyBtn.disabled = false;
             showWarning('✅ Адрес успешно найден и сохранён. Нажмите «Далее» для продолжения.', 'ok');
@@ -855,8 +1137,9 @@ document.getElementById('popup-ok').addEventListener('click', function() {
             addressInput.disabled = true;
         })
         .catch(function(err) {
-            if (isAdmin) diagLog('❌ Ошибка: ' + err.message, 'err');
-            showWarning('❌ Ошибка сохранения. Попробуйте ещё раз.', 'error');
+            if (isAdmin) diagLog('❌ Сетевая ошибка: ' + err.message, 'err');
+            if (isAdmin) diagLog('   Что это значит: запрос не дошёл до CorsProxy или он не ответил.', 'err');
+            showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
         });
 });
 
