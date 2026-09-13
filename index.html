@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v33</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v34</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v33 ===</div>
+<div id="diag" class="admin-only">=== v34 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v33';
+var SCRIPT_VERSION = 'v34';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -93,6 +93,9 @@ var NO_LOCALITY = 'не требуется';
 var NO_VALUE = 'отсутствует';
 
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
+
+// ===== ОБРАБОТКА OTHER: ПРЕФИКСЫ =====
+var OTHER_PREFIXES = ['снт', 'днт', 'тсж', 'тсн', 'кп', 'садоводческое', 'дачное', 'товарищество'];
 
 var IMPORTANT_TYPES = [
     { field: 'stanitsa', prefixes: ['станица', 'ст-ца'] },
@@ -123,6 +126,36 @@ var UNIMPORTANT_TYPES = [
     { field: 'district', prefixes: ['район'] }
 ];
 
+// ===== СОКРАЩЕНИЯ ДЛЯ ОТПРАВКИ В БОТ =====
+var ABBREVIATIONS = [
+    { from: /^станица\s+/i, to: 'ст-ца ' },
+    { from: /^село\s+/i, to: 'с. ' },
+    { from: /^посёлок\s+/i, to: 'п. ' },
+    { from: /^поселок\s+/i, to: 'п. ' },
+    { from: /^деревня\s+/i, to: 'д. ' },
+    { from: /^хутор\s+/i, to: 'х. ' },
+    { from: /^проспект\s+/i, to: 'пр-кт ' },
+    { from: /^улица\s+/i, to: 'ул. ' },
+    { from: /^переулок\s+/i, to: 'пер. ' },
+    { from: /^бульвар\s+/i, to: 'б-р ' },
+    { from: /^шоссе\s+/i, to: 'ш. ' },
+    { from: /^набережная\s+/i, to: 'наб. ' },
+    { from: /^площадь\s+/i, to: 'пл. ' },
+    { from: /^тупик\s+/i, to: 'туп. ' },
+    { from: /^микрорайон\s+/i, to: 'мкр ' },
+    { from: /^жилой район\s+/i, to: 'ж/р ' },
+    { from: /^жилой комплекс\s+/i, to: 'ЖК ' }
+];
+
+function abbreviate(text) {
+    if (!text) return text;
+    var result = text;
+    for (var i = 0; i < ABBREVIATIONS.length; i++) {
+        result = result.replace(ABBREVIATIONS[i].from, ABBREVIATIONS[i].to);
+    }
+    return result;
+}
+
 var diag = document.getElementById('diag');
 function diagLog(text, cls) {
     if (!diag) return;
@@ -138,7 +171,6 @@ var urlParams = new URLSearchParams(window.location.search);
 var tgUserId = urlParams.get('tg_user_id') || '';
 var selectedCity = urlParams.get('city') || '';
 
-// Защита от неподставленных переменных
 if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = '';
 if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
 
@@ -168,9 +200,6 @@ var popupText = document.getElementById('popup-text');
 diagLog(SCRIPT_VERSION + ' старт', 'info');
 diagLog('URL параметры: tg_user_id=' + tgUserId + ', city=' + selectedCity, 'new');
 
-// ============================================================
-// ЕСЛИ ID/ГОРОД ПУСТЫ — ТЕСТ-РЕЖИМ
-// ============================================================
 if (!tgUserId || !selectedCity) {
     setTimeout(function() {
         if (!tgUserId) { tgUserId = DEFAULT_USER_ID; }
@@ -206,9 +235,6 @@ function updateHeader() {
     if (headerCity) headerCity.textContent = selectedCity || '...';
 }
 
-// ============================================================
-// ЖДЁМ ЗАГРУЗКИ YANDEX API
-// ============================================================
 function waitForYmaps(cb) {
     if (typeof ymaps !== 'undefined' && ymaps.ready) {
         ymaps.ready(cb);
@@ -446,6 +472,13 @@ function handleGeocoderData(data, baseJson, onDone) {
 
     var meta = members[0].GeoObject.metaDataProperty.GeocoderMetaData;
     var comps = meta.Address && meta.Address.Components ? meta.Address.Components : [];
+
+    // ===== ЛОГИРОВАНИЕ ВСЕХ KIND'ОВ =====
+    diagLog('=== Все компоненты адреса ===', 'new');
+    comps.forEach(function(c) {
+        diagLog('   kind: "' + c.kind + '" → "' + c.name + '"', 'info');
+    });
+
     var byKind = {};
     comps.forEach(function(c) {
         if (!byKind[c.kind]) byKind[c.kind] = [];
@@ -457,8 +490,31 @@ function handleGeocoderData(data, baseJson, onDone) {
     var districtArr = byKind.district || [];
     var streetArr = byKind.street || [];
     var houseArr = byKind.house || [];
+    var otherArr = byKind.other || [];
     var precision = meta.precision || '';
     var coords = baseJson.coords, link = baseJson.link;
+
+    // ===== ФИЛЬТРАЦИЯ OTHER ПО ПРЕФИКСАМ =====
+    var filteredOther = [];
+    otherArr.forEach(function(v) {
+        var l = v.toLowerCase().trim();
+        for (var i = 0; i < OTHER_PREFIXES.length; i++) {
+            if (l.indexOf(OTHER_PREFIXES[i]) === 0) {
+                filteredOther.push(v);
+                diagLog('   other (подходит): ' + v, 'ok');
+                return;
+            }
+        }
+        diagLog('   other (пропуск): ' + v, 'warn');
+    });
+
+    // Добавляем filteredOther в districtArr
+    if (filteredOther.length > 0) {
+        filteredOther.forEach(function(v) {
+            districtArr.push(v);
+        });
+        diagLog('   filteredOther добавлено в districtArr: ' + filteredOther.join(', '), 'ok');
+    }
 
     var streetStr = pickMatchingStreet(streetArr, selectedAddress);
     var houseStr = pickMatchingHouse(houseArr, selectedAddress);
@@ -595,8 +651,8 @@ function finishFail(message, onDone) {
 
 function buildTransferLine(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
-    var district = (result.district && result.district.length > 0) ? result.district : NO_VALUE;
-    var street = (result.street && result.street.length > 0) ? result.street : NO_VALUE;
+    var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
+    var street = (result.street && result.street.length > 0) ? abbreviate(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
     var link = result.link || NO_VALUE;
     return [locality, district, street, house, link].join(DIVIDER);
