@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v37</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v39</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v37 ===</div>
+<div id="diag" class="admin-only">=== v39 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v37';
+var SCRIPT_VERSION = 'v39';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -96,8 +96,6 @@ var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
 var OTHER_PREFIXES = ['снт', 'днт', 'тсж', 'тсн', 'кп', 'садоводческое', 'дачное', 'товарищество'];
 
-// ===== ВАЖНЫЕ ТИПЫ (все, от специфичных к общим) =====
-// Порядок важен: сначала специфичные префиксы, чтобы "посёлок городского типа" не попал в "посёлок"
 var IMPORTANT_TYPES = [
     { field: 'pgt',          prefixes: ['пгт', 'посёлок городского типа', 'поселок городского типа'] },
     { field: 'gp',           prefixes: ['городской посёлок', 'городской поселок'] },
@@ -129,7 +127,6 @@ var IMPORTANT_TYPES = [
     { field: 'massiv',       prefixes: ['массив', 'масс.'] }
 ];
 
-// ===== НЕВАЖНЫЕ ТИПЫ (один, от точного к общему, метро — последний) =====
 var UNIMPORTANT_TYPES = [
     { field: 'kvartal',        prefixes: ['жилой квартал', 'квартал', 'кв-л', 'кв.'] },
     { field: 'station',        prefixes: ['станция'] },
@@ -147,9 +144,7 @@ var UNIMPORTANT_TYPES = [
     { field: 'metro',          prefixes: ['метро', 'мет.'] }
 ];
 
-// ===== СОКРАЩЕНИЯ (префикс + суффикс) =====
 var ABBREVIATIONS = [
-    // Префиксные (в начале строки)
     { from: /^посёлок городского типа\s+/i, to: 'пгт ' },
     { from: /^поселок городского типа\s+/i, to: 'пгт ' },
     { from: /^пгт\s+/i, to: 'пгт ' },
@@ -211,7 +206,6 @@ var ABBREVIATIONS = [
     { from: /^километр\s+/i, to: 'км ' },
     { from: /^площадка\s+/i, to: 'пл-ка ' },
     { from: /^участок\s+/i, to: 'уч-к ' },
-    // Суффиксные (в конце строки)
     { from: /\s+посёлок городского типа(\s|$)/i, to: ' пгт$1' },
     { from: /\s+поселок городского типа(\s|$)/i, to: ' пгт$1' },
     { from: /\s+коттеджный посёлок(\s|$)/i, to: ' КП$1' },
@@ -275,7 +269,9 @@ var selectedCity = urlParams.get('city') || '';
 if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = '';
 if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
 
-var cityArea = '';
+// ===== МАССИВ ВСЕХ AREA ГОРОДА =====
+var cityAreaArr = [];
+
 var selectedAddress = '';
 var selectedLink = '';
 var selectedCoords = null;
@@ -412,22 +408,34 @@ function createSuggestView() {
     }
 }
 
+// ===== ЗАПРОС AREA ГОРОДА — СОБИРАЕМ ВСЕ =====
 function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
     cityAreaRequested = true;
     diagLog('[0] Запрос area для «' + selectedCity + '»...', 'new');
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
-        '&format=json&results=1&lang=ru_RU&kind=area&geocode=' + encodeURIComponent(selectedCity);
+        '&format=json&results=1&lang=ru_RU&geocode=' + encodeURIComponent(selectedCity);
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
         if (!data || !data.response || !data.response.GeoObjectCollection) { diagLog('[0] ❌ Нет response', 'err'); return; }
         var m = data.response.GeoObjectCollection.featureMember;
         if (!m || m.length === 0) { diagLog('[0] area не найдено', 'warn'); return; }
         var comps = m[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
-        for (var i = 0; i < comps.length; i++) if (comps[i].kind === 'area') { cityArea = comps[i].name; break; }
-        if (!cityArea) {
-            for (var j = 0; j < comps.length; j++) if (comps[j].kind === 'locality') { cityArea = comps[j].name; break; }
+        cityAreaArr = [];
+        for (var i = 0; i < comps.length; i++) {
+            if (comps[i].kind === 'area') {
+                cityAreaArr.push(comps[i].name);
+            }
         }
-        diagLog('[0] area города = «' + cityArea + '»', 'ok');
+        // Если area нет — берём locality как fallback
+        if (cityAreaArr.length === 0) {
+            for (var j = 0; j < comps.length; j++) {
+                if (comps[j].kind === 'locality') {
+                    cityAreaArr.push(comps[j].name);
+                    break;
+                }
+            }
+        }
+        diagLog('[0] area города = ' + JSON.stringify(cityAreaArr), 'ok');
     }).catch(function(e) { diagLog('[0] Ошибка: ' + e.message, 'err'); });
 }
 
@@ -539,6 +547,25 @@ function pickMatchingStreet(streetArr, selectedAddress) {
     return String(streetArr[0]).trim();
 }
 
+// ===== СРАВНЕНИЕ AREA: ВСЕ ПАРЫ =====
+function areasMatch(addressAreaArr) {
+    if (!cityAreaArr || cityAreaArr.length === 0) return false;
+    if (!addressAreaArr || addressAreaArr.length === 0) return false;
+    var matches = 0;
+    for (var i = 0; i < cityAreaArr.length; i++) {
+        var c = cityAreaArr[i].toLowerCase();
+        for (var j = 0; j < addressAreaArr.length; j++) {
+            var a = addressAreaArr[j].toLowerCase();
+            if (c === a) {
+                matches++;
+                if (isAdmin) diagLog('   ✅ Совпадение: «' + cityAreaArr[i] + '» == «' + addressAreaArr[j] + '»', 'ok');
+            }
+        }
+    }
+    if (isAdmin) diagLog('   Совпадений всего: ' + matches, matches > 0 ? 'ok' : 'warn');
+    return matches > 0;
+}
+
 var ORIENT_KINDS = [
     { kind: 'district', prefix: 'в районе ' },
     { kind: 'metro', prefix: 'рядом с ' },
@@ -606,14 +633,12 @@ function handleGeocoderData(data, baseJson, onDone) {
     var precision = meta.precision || '';
     var coords = baseJson.coords, link = baseJson.link;
 
-    // ===== 1. СНАЧАЛА — ПРОВЕРКА "locality = город?" =====
     var localityIsCity = false;
     for (var i = 0; i < localityArrRaw.length; i++) {
         if (isSelectedCity(localityArrRaw[i], selectedCity)) { localityIsCity = true; break; }
     }
     diagLog('localityIsCity: ' + localityIsCity, 'new');
 
-    // ===== 2. ФИЛЬТРАЦИЯ locality =====
     var localityArr = [];
     var localityAsDistrict = [];
 
@@ -636,7 +661,6 @@ function handleGeocoderData(data, baseJson, onDone) {
         localityAsDistrict.forEach(function(v) { districtArr.push(v); });
     }
 
-    // ===== 3. ФИЛЬТРАЦИЯ other по префиксам =====
     otherArr.forEach(function(v) {
         if (startsWithOtherPrefix(v)) {
             districtArr.push(v);
@@ -646,13 +670,11 @@ function handleGeocoderData(data, baseJson, onDone) {
         }
     });
 
-    // ===== 4. МЕТРО из Components =====
     metroArr.forEach(function(v) {
         districtArr.push('метро ' + v);
         diagLog('   metroStation→district: метро ' + v, 'ok');
     });
 
-    // ===== 5. ДЕДУП districtArr =====
     var seen = {};
     districtArr = districtArr.filter(function(v) {
         var key = v.toLowerCase();
@@ -668,6 +690,7 @@ function handleGeocoderData(data, baseJson, onDone) {
     if (isAdmin) diagLog('houseArr: ' + JSON.stringify(houseArr) + ' → ' + houseStr, 'info');
     if (isAdmin) diagLog('localityArr: ' + JSON.stringify(localityArr), 'info');
     if (isAdmin) diagLog('districtArr: ' + JSON.stringify(districtArr), 'info');
+    if (isAdmin) diagLog('areaArr (адрес): ' + JSON.stringify(areaArr), 'info');
 
     if (localityIsCity) {
         if (districtArr.length > 0) {
@@ -693,12 +716,9 @@ function handleGeocoderData(data, baseJson, onDone) {
         return;
     }
 
-    var areaMatches = false;
-    if (cityArea) {
-        for (var j = 0; j < areaArr.length; j++) {
-            if (areaArr[j].toLowerCase() === cityArea.toLowerCase()) { areaMatches = true; break; }
-        }
-    }
+    // ===== 0.2 — СРАВНИВАЕМ ВСЕ ПАРЫ AREA =====
+    diagLog('=== [0.2] Сравнение area ===', 'new');
+    var areaMatches = areasMatch(areaArr);
 
     if (!areaMatches) {
         if (houseStr.length === 0) { finishFail('Введите точный адрес (номер дома).', onDone); return; }
