@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v34</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v35</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v34 ===</div>
+<div id="diag" class="admin-only">=== v35 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v34';
+var SCRIPT_VERSION = 'v35';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -94,7 +94,6 @@ var NO_VALUE = 'отсутствует';
 
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
-// ===== ОБРАБОТКА OTHER: ПРЕФИКСЫ =====
 var OTHER_PREFIXES = ['снт', 'днт', 'тсж', 'тсн', 'кп', 'садоводческое', 'дачное', 'товарищество'];
 
 var IMPORTANT_TYPES = [
@@ -126,7 +125,6 @@ var UNIMPORTANT_TYPES = [
     { field: 'district', prefixes: ['район'] }
 ];
 
-// ===== СОКРАЩЕНИЯ ДЛЯ ОТПРАВКИ В БОТ =====
 var ABBREVIATIONS = [
     { from: /^станица\s+/i, to: 'ст-ца ' },
     { from: /^село\s+/i, to: 'с. ' },
@@ -164,9 +162,6 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 
-// ============================================================
-// ЧТЕНИЕ ID И ГОРОДА ИЗ URL
-// ============================================================
 var urlParams = new URLSearchParams(window.location.search);
 var tgUserId = urlParams.get('tg_user_id') || '';
 var selectedCity = urlParams.get('city') || '';
@@ -362,8 +357,16 @@ function detectType(text, list) {
     return null;
 }
 
+function startsWithOtherPrefix(text) {
+    var l = text.toLowerCase().trim();
+    for (var i = 0; i < OTHER_PREFIXES.length; i++) {
+        if (l.indexOf(OTHER_PREFIXES[i]) === 0) return true;
+    }
+    return false;
+}
+
 function buildDistrict(values) {
-    var important = [], unimportant = [];
+    var important = [], unimportant = [], unknown = [];
     values.forEach(function(v) {
         var imp = detectType(v, IMPORTANT_TYPES);
         if (imp) {
@@ -377,12 +380,15 @@ function buildDistrict(values) {
             for (var m = 0; m < UNIMPORTANT_TYPES.length; m++) {
                 if (UNIMPORTANT_TYPES[m].field === uni) { unimportant.push({ name: v, priority: m }); break; }
             }
+            return;
         }
+        unknown.push(v);
     });
     important.sort(function(a,b){ return a.priority - b.priority; });
     unimportant.sort(function(a,b){ return a.priority - b.priority; });
     var res = important.map(function(x){ return x.name; });
     if (unimportant.length > 0) res.push(unimportant[0].name);
+    unknown.forEach(function(v) { res.push(v); });
     return res;
 }
 
@@ -473,7 +479,6 @@ function handleGeocoderData(data, baseJson, onDone) {
     var meta = members[0].GeoObject.metaDataProperty.GeocoderMetaData;
     var comps = meta.Address && meta.Address.Components ? meta.Address.Components : [];
 
-    // ===== ЛОГИРОВАНИЕ ВСЕХ KIND'ОВ =====
     diagLog('=== Все компоненты адреса ===', 'new');
     comps.forEach(function(c) {
         diagLog('   kind: "' + c.kind + '" → "' + c.name + '"', 'info');
@@ -485,47 +490,71 @@ function handleGeocoderData(data, baseJson, onDone) {
         byKind[c.kind].push(c.name);
     });
 
-    var localityArr = byKind.locality || [];
+    var localityArrRaw = byKind.locality || [];
     var areaArr = byKind.area || [];
-    var districtArr = byKind.district || [];
+    var districtArr = (byKind.district || []).slice();
     var streetArr = byKind.street || [];
     var houseArr = byKind.house || [];
     var otherArr = byKind.other || [];
     var precision = meta.precision || '';
     var coords = baseJson.coords, link = baseJson.link;
 
-    // ===== ФИЛЬТРАЦИЯ OTHER ПО ПРЕФИКСАМ =====
-    var filteredOther = [];
-    otherArr.forEach(function(v) {
-        var l = v.toLowerCase().trim();
-        for (var i = 0; i < OTHER_PREFIXES.length; i++) {
-            if (l.indexOf(OTHER_PREFIXES[i]) === 0) {
-                filteredOther.push(v);
-                diagLog('   other (подходит): ' + v, 'ok');
-                return;
-            }
+    // ===== 1. СНАЧАЛА — ПРОВЕРКА "locality = город?" по СЫРОМУ массиву =====
+    var localityIsCity = false;
+    for (var i = 0; i < localityArrRaw.length; i++) {
+        if (isSelectedCity(localityArrRaw[i], selectedCity)) { localityIsCity = true; break; }
+    }
+    diagLog('localityIsCity: ' + localityIsCity + ' (проверка по сырому массиву)', 'new');
+
+    // ===== 2. ПОТОМ — ФИЛЬТРАЦИЯ locality =====
+    var localityArr = [];
+    var localityAsDistrict = [];
+
+    localityArrRaw.forEach(function(v) {
+        if (isSelectedCity(v, selectedCity)) {
+            localityArr.push(v);
+            diagLog('   locality (город): ' + v, 'ok');
+            return;
         }
-        diagLog('   other (пропуск): ' + v, 'warn');
+        if (detectType(v, IMPORTANT_TYPES)) {
+            localityArr.push(v);
+            diagLog('   locality (населённый пункт): ' + v, 'ok');
+            return;
+        }
+        localityAsDistrict.push(v);
+        diagLog('   locality→district: ' + v, 'warn');
     });
 
-    // Добавляем filteredOther в districtArr
-    if (filteredOther.length > 0) {
-        filteredOther.forEach(function(v) {
-            districtArr.push(v);
-        });
-        diagLog('   filteredOther добавлено в districtArr: ' + filteredOther.join(', '), 'ok');
+    if (localityAsDistrict.length > 0) {
+        localityAsDistrict.forEach(function(v) { districtArr.push(v); });
     }
+
+    // ===== 3. ФИЛЬТРАЦИЯ otherArr по префиксам =====
+    otherArr.forEach(function(v) {
+        if (startsWithOtherPrefix(v)) {
+            districtArr.push(v);
+            diagLog('   other→district: ' + v, 'ok');
+        } else {
+            diagLog('   other (пропуск): ' + v, 'warn');
+        }
+    });
+
+    // ===== 4. ДЕДУП districtArr =====
+    var seen = {};
+    districtArr = districtArr.filter(function(v) {
+        var key = v.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+    });
 
     var streetStr = pickMatchingStreet(streetArr, selectedAddress);
     var houseStr = pickMatchingHouse(houseArr, selectedAddress);
 
     if (isAdmin) diagLog('streetArr: ' + JSON.stringify(streetArr) + ' → ' + streetStr, 'info');
     if (isAdmin) diagLog('houseArr: ' + JSON.stringify(houseArr) + ' → ' + houseStr, 'info');
-
-    var localityIsCity = false;
-    for (var i = 0; i < localityArr.length; i++) {
-        if (isSelectedCity(localityArr[i], selectedCity)) { localityIsCity = true; break; }
-    }
+    if (isAdmin) diagLog('localityArr: ' + JSON.stringify(localityArr), 'info');
+    if (isAdmin) diagLog('districtArr: ' + JSON.stringify(districtArr), 'info');
 
     if (localityIsCity) {
         if (districtArr.length > 0) {
@@ -651,6 +680,9 @@ function finishFail(message, onDone) {
 
 function buildTransferLine(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
+    if (locality !== NO_LOCALITY && locality !== NO_VALUE && locality.length > 0) {
+        locality = abbreviate(locality);
+    }
     var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
     var street = (result.street && result.street.length > 0) ? abbreviate(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
