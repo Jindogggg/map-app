@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v32</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v33</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v32 ===</div>
+<div id="diag" class="admin-only">=== v33 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v32';
+var SCRIPT_VERSION = 'v33';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -131,8 +131,17 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 
-var tgUserId = '';
-var selectedCity = '';
+// ============================================================
+// ЧТЕНИЕ ID И ГОРОДА ИЗ URL
+// ============================================================
+var urlParams = new URLSearchParams(window.location.search);
+var tgUserId = urlParams.get('tg_user_id') || '';
+var selectedCity = urlParams.get('city') || '';
+
+// Защита от неподставленных переменных
+if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = '';
+if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
+
 var cityArea = '';
 var selectedAddress = '';
 var selectedLink = '';
@@ -144,8 +153,6 @@ var isAdmin = false;
 var cityAreaRequested = false;
 var pendingResult = null;
 var pendingLocalityMode = 'не требуется';
-var idConfirmed = false;
-var cityConfirmed = false;
 var suggestViewCreated = false;
 
 var headerId = document.getElementById('header-id');
@@ -158,27 +165,27 @@ var popupOverlay = document.getElementById('popup-overlay');
 var popupAddress = document.getElementById('popup-address');
 var popupText = document.getElementById('popup-text');
 
-diagLog(SCRIPT_VERSION + ' старт (скрипт запущен)', 'info');
+diagLog(SCRIPT_VERSION + ' старт', 'info');
+diagLog('URL параметры: tg_user_id=' + tgUserId + ', city=' + selectedCity, 'new');
 
-// === СЛУШАТЕЛЬ СООБЩЕНИЙ — РАБОТАЕТ СРАЗУ, ДО ЗАГРУЗКИ YANDEX API ===
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'TG_USER_ID') {
-        tgUserId = event.data.userId;
-        idConfirmed = true;
-        if (checkAdmin(tgUserId)) enableAdminMode();
-        diagLog('user_id = ' + tgUserId + (isAdmin ? ' (АДМИН)' : ''), isAdmin ? 'ok' : 'info');
-        updateHeader();
-        sendConfirmation();
-    }
-    if (event.data && event.data.type === 'CITY') {
-        selectedCity = event.data.city || '';
-        cityConfirmed = true;
-        diagLog('city = ' + selectedCity, 'ok');
+// ============================================================
+// ЕСЛИ ID/ГОРОД ПУСТЫ — ТЕСТ-РЕЖИМ
+// ============================================================
+if (!tgUserId || !selectedCity) {
+    setTimeout(function() {
+        if (!tgUserId) { tgUserId = DEFAULT_USER_ID; }
+        if (!selectedCity) { selectedCity = DEFAULT_CITY; }
+        isTestMode = true;
+        enableAdminMode();
+        diagLog('🧪 ТЕСТ-РЕЖИМ (браузер)', 'warn');
         updateHeader();
         requestCityArea();
-        sendConfirmation();
-    }
-});
+    }, 2000);
+} else {
+    if (checkAdmin(tgUserId)) enableAdminMode();
+    updateHeader();
+    requestCityArea();
+}
 
 function checkAdmin(id) {
     if (!id) return false;
@@ -191,7 +198,6 @@ function checkAdmin(id) {
 function enableAdminMode() {
     isAdmin = true;
     document.body.classList.add('admin-mode');
-    if (typeof ymaps !== 'undefined' && ymaps.Map && !myMap) initMap();
 }
 
 function updateHeader() {
@@ -200,14 +206,9 @@ function updateHeader() {
     if (headerCity) headerCity.textContent = selectedCity || '...';
 }
 
-function sendConfirmation() {
-    try {
-        window.parent.postMessage({ type: 'CONTEXT_RECEIVED' }, '*');
-        diagLog('📤 Отправлено CONTEXT_RECEIVED', 'info');
-    } catch(e) {}
-}
-
-// === ЖДЁМ ЗАГРУЗКИ YANDEX API (polling) ===
+// ============================================================
+// ЖДЁМ ЗАГРУЗКИ YANDEX API
+// ============================================================
 function waitForYmaps(cb) {
     if (typeof ymaps !== 'undefined' && ymaps.ready) {
         ymaps.ready(cb);
@@ -283,24 +284,6 @@ function createSuggestView() {
         diagLog('❌ Ошибка создания SuggestView: ' + e.message, 'err');
     }
 }
-
-// === ТЕСТ-РЕЖИМ — через 2 СЕКУНДЫ (если ID/город не пришли) ===
-setTimeout(function () {
-    if (idConfirmed && cityConfirmed) {
-        diagLog('✅ ID и город получены из PuzzleBot', 'ok');
-        return;
-    }
-    var need = false;
-    if (!tgUserId) { tgUserId = DEFAULT_USER_ID; need = true; }
-    if (!selectedCity) { selectedCity = DEFAULT_CITY; need = true; }
-    if (need) {
-        isTestMode = true;
-        enableAdminMode();
-        diagLog('🧪 ТЕСТ-РЕЖИМ (браузер)', 'warn');
-        updateHeader();
-    }
-    requestCityArea();
-}, 2000);
 
 function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
