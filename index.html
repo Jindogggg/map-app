@@ -45,6 +45,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .popup-btn { flex: 1; padding: 12px; border: none; border-radius: 30px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .popup-btn-ok { background: #43a047; color: #fff; }
 .popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
+
+/* ===== Компактный попап для обычных пользователей (не админ) =====
+   iframe у пользователя ~180px, поэтому сжимаем попап, чтобы он влезал.
+   У админа body.admin-mode → эти правила не применяются, попап прежний. */
+body:not(.admin-mode) #popup-overlay {
+    padding: 4px;
+    align-items: center;
+}
+body:not(.admin-mode) #popup {
+    padding: 8px 10px;
+    border-radius: 12px;
+    max-width: 100%;
+    max-height: calc(100vh - 8px);
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+body:not(.admin-mode) #popup-title {
+    font-size: 13px;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+body:not(.admin-mode) #popup-address {
+    font-size: 11px;
+    padding: 5px 8px;
+    margin-bottom: 6px;
+    line-height: 1.3;
+    border-radius: 8px;
+}
+body:not(.admin-mode) #popup-text {
+    font-size: 10px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+    color: #444;
+}
+body:not(.admin-mode) .popup-buttons { gap: 6px; }
+body:not(.admin-mode) .popup-btn {
+    padding: 8px 6px;
+    font-size: 12px;
+    border-radius: 20px;
+}
+
 .ymaps-suggest, .ymaps-suggest__list, .ymaps-suggest__item, [class*="suggest"] { white-space: normal !important; word-wrap: break-word !important; overflow-wrap: break-word !important; word-break: break-word !important; text-overflow: clip !important; overflow: visible !important; height: auto !important; max-height: none !important; line-height: 1.4 !important; }
 .ymaps-suggest__list, [class*="suggest__list"] { max-height: 300px !important; overflow-y: auto !important; }
 .ymaps-suggest__item, [class*="suggest__item"] { padding: 10px 12px !important; border-bottom: 1px solid #eef2f6 !important; cursor: pointer !important; font-size: 13px !important; display: block !important; width: 100% !important; }
@@ -441,7 +482,6 @@ function stripPrefixes(text) {
     return result.trim();
 }
 
-// ===== ВЫРЕЗАЕМ ТОЛЬКО QUERY-ЧАСТЬ ИЗ ССЫЛКИ =====
 var YANDEX_MAPS_PREFIX = 'https://yandex.ru/maps/?text=';
 
 function extractQueryFromUrl(url) {
@@ -1031,7 +1071,6 @@ function finishFail(message, onDone) {
     onDone(null, message);
 }
 
-// ===== СБОРКА СТРОКИ: 5-е и 6-е поле — только query-часть =====
 function buildTransferLine(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
     if (locality !== NO_LOCALITY && locality !== NO_VALUE && locality.length > 0) {
@@ -1040,7 +1079,6 @@ function buildTransferLine(result) {
     var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
     var street = (result.street && result.street.length > 0) ? abbreviateStreet(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
-    // 5-е и 6-е поле — только query-часть (без https://yandex.ru/maps/?text=)
     var linkQuery = (result.link && result.link.length > 0) ? extractQueryFromUrl(result.link) : NO_VALUE;
     var linkSearchQuery = (result.link_search && result.link_search.length > 0) ? extractQueryFromUrl(result.link_search) : NO_VALUE;
     return [locality, district, street, house, linkQuery, linkSearchQuery].join(DIVIDER);
