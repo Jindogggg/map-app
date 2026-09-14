@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v43</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v44</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v43 ===</div>
+<div id="diag" class="admin-only">=== v44 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v43';
+var SCRIPT_VERSION = 'v44';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -441,6 +441,18 @@ function stripPrefixes(text) {
     return result.trim();
 }
 
+// ===== ВЫРЕЗАЕМ ТОЛЬКО QUERY-ЧАСТЬ ИЗ ССЫЛКИ =====
+var YANDEX_MAPS_PREFIX = 'https://yandex.ru/maps/?text=';
+
+function extractQueryFromUrl(url) {
+    if (!url) return NO_VALUE;
+    var s = String(url);
+    if (s.indexOf(YANDEX_MAPS_PREFIX) === 0) {
+        return s.substring(YANDEX_MAPS_PREFIX.length);
+    }
+    return s;
+}
+
 var diag = document.getElementById('diag');
 function diagLog(text, cls) {
     if (!diag) return;
@@ -562,7 +574,7 @@ function createSuggestView() {
             var displayName = item.displayName || value;
 
             selectedAddress = displayName || value;
-            selectedLink = 'https://yandex.ru/maps/?text=' + encodeURIComponent(value);
+            selectedLink = YANDEX_MAPS_PREFIX + encodeURIComponent(value);
 
             if (isAdmin) diagLog('👤 Выбран адрес: ' + selectedAddress, 'info');
 
@@ -993,7 +1005,7 @@ function buildSearchLink(result, localityValue) {
         parts.push(result.house);
     }
     var query = parts.join(', ');
-    return 'https://yandex.ru/maps/?text=' + encodeURIComponent(query);
+    return YANDEX_MAPS_PREFIX + encodeURIComponent(query);
 }
 
 function showPendingPopup(result, addressText, streetMissing) {
@@ -1011,9 +1023,7 @@ function showPendingPopup(result, addressText, streetMissing) {
         popupOverlay.classList.add('visible');
         popupOverlay.style.display = 'flex';
     }
-    if (isAdmin) {
-        diagLog('📍 Показан попап: ' + addressText, 'new');
-    }
+    if (isAdmin) diagLog('📍 Показан попап: ' + addressText, 'new');
 }
 
 function finishFail(message, onDone) {
@@ -1021,6 +1031,7 @@ function finishFail(message, onDone) {
     onDone(null, message);
 }
 
+// ===== СБОРКА СТРОКИ: 5-е и 6-е поле — только query-часть =====
 function buildTransferLine(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
     if (locality !== NO_LOCALITY && locality !== NO_VALUE && locality.length > 0) {
@@ -1029,9 +1040,10 @@ function buildTransferLine(result) {
     var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
     var street = (result.street && result.street.length > 0) ? abbreviateStreet(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
-    var link = (result.link && result.link.length > 0) ? result.link : NO_VALUE;
-    var linkSearch = (result.link_search && result.link_search.length > 0) ? result.link_search : NO_VALUE;
-    return [locality, district, street, house, link, linkSearch].join(DIVIDER);
+    // 5-е и 6-е поле — только query-часть (без https://yandex.ru/maps/?text=)
+    var linkQuery = (result.link && result.link.length > 0) ? extractQueryFromUrl(result.link) : NO_VALUE;
+    var linkSearchQuery = (result.link_search && result.link_search.length > 0) ? extractQueryFromUrl(result.link_search) : NO_VALUE;
+    return [locality, district, street, house, linkQuery, linkSearchQuery].join(DIVIDER);
 }
 
 function describePuzzleBotCode(code) {
@@ -1053,15 +1065,12 @@ function describePuzzleBotCode(code) {
     return codes[code] || 'неизвестный код';
 }
 
-// ===== ОТПРАВКА С ТАЙМАУТОМ И ПОВТОРАМИ =====
 function fetchWithTimeout(url, timeoutMs) {
     return new Promise(function(resolve, reject) {
         var controller = null;
         var timer = null;
-        try {
-            controller = new AbortController();
-        } catch (e) {
-            // AbortController не поддерживается — фолбэк на обычный fetch
+        try { controller = new AbortController(); }
+        catch (e) {
             fetch(url, { method: 'GET' }).then(resolve).catch(reject);
             return;
         }
@@ -1070,14 +1079,8 @@ function fetchWithTimeout(url, timeoutMs) {
             reject(new Error('ТАЙМАУТ'));
         }, timeoutMs);
         fetch(url, { method: 'GET', signal: controller.signal })
-            .then(function(r) {
-                clearTimeout(timer);
-                resolve(r);
-            })
-            .catch(function(err) {
-                clearTimeout(timer);
-                reject(err);
-            });
+            .then(function(r) { clearTimeout(timer); resolve(r); })
+            .catch(function(err) { clearTimeout(timer); reject(err); });
     });
 }
 
@@ -1106,9 +1109,7 @@ function sendWithRetry(url) {
                 return text;
             })
             .catch(function(err) {
-                if (attempt >= SEND_MAX_ATTEMPTS) {
-                    throw err;
-                }
+                if (attempt >= SEND_MAX_ATTEMPTS) throw err;
                 if (isAdmin) diagLog('   Попытка ' + attempt + ' не удалась: ' + err.message, 'warn');
                 return new Promise(function(resolve) {
                     setTimeout(resolve, SEND_RETRY_DELAY_MS);
@@ -1127,7 +1128,7 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     pendingResult = null;
 
     var line = buildTransferLine(result);
-    if (isAdmin) diagLog('📤 Строка (6 полей): ' + line, 'new');
+    if (isAdmin) diagLog('📤 Строка (6 полей, 5 и 6 — только query): ' + line, 'new');
 
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
@@ -1145,9 +1146,8 @@ document.getElementById('popup-ok').addEventListener('click', function() {
             if (isAdmin) diagLog('📥 Ответ (сырой): ' + text, 'info');
 
             var parsed;
-            try {
-                parsed = JSON.parse(text);
-            } catch (e) {
+            try { parsed = JSON.parse(text); }
+            catch (e) {
                 if (isAdmin) diagLog('❌ Ответ не JSON. CorsProxy вернул что-то не то.', 'err');
                 showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
                 return;
@@ -1160,16 +1160,14 @@ document.getElementById('popup-ok').addEventListener('click', function() {
             }
 
             if (parsed.code === undefined) {
-                if (isAdmin) diagLog('❌ В ответе нет поля code. Что-то не так.', 'err');
+                if (isAdmin) diagLog('❌ В ответе нет поля code.', 'err');
                 showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
                 return;
             }
 
             if (parsed.code !== 0) {
                 if (isAdmin) diagLog('❌ Ошибка PuzzleBot. Код: ' + parsed.code + ' (' + describePuzzleBotCode(parsed.code) + ')', 'err');
-                if (parsed.description) {
-                    if (isAdmin) diagLog('   Описание: ' + parsed.description, 'err');
-                }
+                if (parsed.description) if (isAdmin) diagLog('   Описание: ' + parsed.description, 'err');
                 showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
                 return;
             }
@@ -1183,7 +1181,6 @@ document.getElementById('popup-ok').addEventListener('click', function() {
         })
         .catch(function(err) {
             if (isAdmin) diagLog('❌ Все ' + SEND_MAX_ATTEMPTS + ' попыток провалились. Последняя ошибка: ' + err.message, 'err');
-            if (isAdmin) diagLog('   Что это значит: CorsProxy не ответил за ' + (SEND_TIMEOUT_MS * SEND_MAX_ATTEMPTS / 1000) + ' секунд.', 'err');
             showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
         });
 });
