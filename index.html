@@ -55,11 +55,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <body>
 <div class="card">
 <div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v42</span><br>
+    ID: <b id="header-id">...</b> <span class="version">v43</span><br>
     🏙️ Город: <b id="header-city">...</b>
 </div>
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v42 ===</div>
+<div id="diag" class="admin-only">=== v43 ===</div>
 <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
 <div id="map" class="admin-only"></div>
 <div class="json-block admin-only">
@@ -81,7 +81,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v42';
+var SCRIPT_VERSION = 'v43';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzlebot.top/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -91,6 +91,9 @@ var DEFAULT_CITY = 'Краснодар';
 var DIVIDER = '§§§§§';
 var NO_LOCALITY = 'не требуется';
 var NO_VALUE = 'отсутствует';
+var SEND_TIMEOUT_MS = 2000;
+var SEND_MAX_ATTEMPTS = 5;
+var SEND_RETRY_DELAY_MS = 500;
 
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586'];
 
@@ -168,13 +171,10 @@ var STREET_SUFFIXES = [
     { pattern: /\s+заезд\s*$/i, abbr: 'заезд ' }
 ];
 
-// ===== ПРЕФИКСЫ ДЛЯ УДАЛЕНИЯ (только для поисковой ссылки) =====
 var PREFIXES_TO_STRIP = [
-    // Наши служебные приписки
     /^в районе\s+/i,
     /^рядом с\s+/i,
     /^недалеко от\s+/i,
-    // Геопрефиксы населённых пунктов
     /^город\s+/i,
     /^град\s+/i,
     /^станица\s+/i,
@@ -223,7 +223,6 @@ var PREFIXES_TO_STRIP = [
     /^улус\s+/i,
     /^махаллинский сход\s+/i,
     /^махалля\s+/i,
-    // Внутригородские
     /^жилой район\s+/i,
     /^ж\/р\s+/i,
     /^микрорайон\s+/i,
@@ -233,7 +232,6 @@ var PREFIXES_TO_STRIP = [
     /^ж\/м\s+/i,
     /^массив\s+/i,
     /^масс\.\s+/i,
-    // Неофициальные
     /^жилой квартал\s+/i,
     /^жил\. кв-л\s+/i,
     /^квартал\s+/i,
@@ -247,7 +245,6 @@ var PREFIXES_TO_STRIP = [
     /^снт\s+/i,
     /^днт\s+/i,
     /^кп\s+/i,
-    // Станции
     /^станционный посёлок\s+/i,
     /^станционный поселок\s+/i,
     /^ст\. пос\.\s+/i,
@@ -267,7 +264,6 @@ var PREFIXES_TO_STRIP = [
     /^гор\.\s+/i,
     /^район\s+/i,
     /^р-н\s+/i,
-    // Улицы
     /^улица\s+/i,
     /^ул\.\s+/i,
     /^проспект\s+/i,
@@ -425,7 +421,6 @@ function abbreviateStreet(text) {
     return abbreviate(result);
 }
 
-// ===== УДАЛЕНИЕ ВСЕХ ПРЕФИКСОВ (только для поисковой ссылки) =====
 function stripPrefixes(text) {
     if (!text) return text;
     var result = String(text).trim();
@@ -487,6 +482,7 @@ var popupText = document.getElementById('popup-text');
 
 diagLog(SCRIPT_VERSION + ' старт', 'info');
 diagLog('URL параметры: tg_user_id=' + tgUserId + ', city=' + selectedCity, 'new');
+diagLog('Настройки отправки: таймаут ' + SEND_TIMEOUT_MS + ' мс, попыток ' + SEND_MAX_ATTEMPTS, 'info');
 
 if (!tgUserId || !selectedCity) {
     setTimeout(function() {
@@ -954,7 +950,6 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
         link: link
     };
     pendingLocalityMode = NO_LOCALITY;
-    // Формируем поисковую ссылку сразу
     result.link_search = buildSearchLink(result, NO_LOCALITY);
     showPendingPopup(result, selectedAddress, false);
     onDone(result, null);
@@ -973,41 +968,30 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         link: link
     };
     pendingLocalityMode = localityStr || NO_VALUE;
-    // Формируем поисковую ссылку сразу
     result.link_search = buildSearchLink(result, localityStr);
     showPendingPopup(result, selectedAddress, streetMissing);
     onDone(result, null);
 }
 
-// ===== ПОИСКОВАЯ ССЫЛКА =====
 function buildSearchLink(result, localityValue) {
     var parts = [];
-
-    // Локалити — если "не требуется" или "отсутствует", берём selectedCity
     var loc = localityValue || '';
     if (!loc || loc === NO_LOCALITY || loc === NO_VALUE) {
         loc = selectedCity;
     }
     var cleanLoc = stripPrefixes(loc);
     if (cleanLoc.length > 0) parts.push(cleanLoc);
-
-    // District
     if (result.district && result.district.length > 0 && result.district !== NO_VALUE) {
         var cleanDist = stripPrefixes(result.district);
         if (cleanDist.length > 0) parts.push(cleanDist);
     }
-
-    // Street
     if (result.street && result.street.length > 0 && result.street !== NO_VALUE) {
         var cleanStreet = stripPrefixes(result.street);
         if (cleanStreet.length > 0) parts.push(cleanStreet);
     }
-
-    // House — без очистки
     if (result.house && result.house.length > 0 && result.house !== NO_VALUE) {
         parts.push(result.house);
     }
-
     var query = parts.join(', ');
     return 'https://yandex.ru/maps/?text=' + encodeURIComponent(query);
 }
@@ -1029,7 +1013,6 @@ function showPendingPopup(result, addressText, streetMissing) {
     }
     if (isAdmin) {
         diagLog('📍 Показан попап: ' + addressText, 'new');
-        if (result.link_search) diagLog('🔍 Поисковая ссылка: ' + result.link_search, 'info');
     }
 }
 
@@ -1070,6 +1053,71 @@ function describePuzzleBotCode(code) {
     return codes[code] || 'неизвестный код';
 }
 
+// ===== ОТПРАВКА С ТАЙМАУТОМ И ПОВТОРАМИ =====
+function fetchWithTimeout(url, timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        var controller = null;
+        var timer = null;
+        try {
+            controller = new AbortController();
+        } catch (e) {
+            // AbortController не поддерживается — фолбэк на обычный fetch
+            fetch(url, { method: 'GET' }).then(resolve).catch(reject);
+            return;
+        }
+        timer = setTimeout(function() {
+            try { controller.abort(); } catch (e) {}
+            reject(new Error('ТАЙМАУТ'));
+        }, timeoutMs);
+        fetch(url, { method: 'GET', signal: controller.signal })
+            .then(function(r) {
+                clearTimeout(timer);
+                resolve(r);
+            })
+            .catch(function(err) {
+                clearTimeout(timer);
+                reject(err);
+            });
+    });
+}
+
+function looksLikeCloudflareError(text) {
+    if (!text) return false;
+    var markers = ['cloudflare', 'Error code 525', 'Error code 52', 'SSL handshake', 'Attention Required'];
+    var lower = String(text).toLowerCase();
+    for (var i = 0; i < markers.length; i++) {
+        if (lower.indexOf(markers[i].toLowerCase()) !== -1) return true;
+    }
+    return false;
+}
+
+function sendWithRetry(url) {
+    var attempt = 0;
+    function tryOnce() {
+        attempt++;
+        if (isAdmin) diagLog('🌐 Попытка ' + attempt + ' из ' + SEND_MAX_ATTEMPTS + '...', 'info');
+        return fetchWithTimeout(url, SEND_TIMEOUT_MS)
+            .then(function(r) { return r.text(); })
+            .then(function(text) {
+                if (looksLikeCloudflareError(text)) {
+                    if (isAdmin) diagLog('⚠️ CorsProxy вернул страницу Cloudflare (их сервер упал).', 'warn');
+                    throw new Error('CLOUDFLARE');
+                }
+                return text;
+            })
+            .catch(function(err) {
+                if (attempt >= SEND_MAX_ATTEMPTS) {
+                    throw err;
+                }
+                if (isAdmin) diagLog('   Попытка ' + attempt + ' не удалась: ' + err.message, 'warn');
+                return new Promise(function(resolve) {
+                    setTimeout(resolve, SEND_RETRY_DELAY_MS);
+                }).then(tryOnce);
+            });
+    }
+    return tryOnce();
+}
+
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
@@ -1089,12 +1137,10 @@ document.getElementById('popup-ok').addEventListener('click', function() {
         '&user_id=' + encodeURIComponent(tgUserId);
 
     var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
-    if (isAdmin) diagLog('🌐 Отправка...', 'info');
 
     showWarning('⏳ Сохраняем адрес...', 'warn');
 
-    fetch(proxyUrl, { method: 'GET' })
-        .then(function(r) { return r.text(); })
+    sendWithRetry(proxyUrl)
         .then(function(text) {
             if (isAdmin) diagLog('📥 Ответ (сырой): ' + text, 'info');
 
@@ -1109,7 +1155,6 @@ document.getElementById('popup-ok').addEventListener('click', function() {
 
             if (parsed.error) {
                 if (isAdmin) diagLog('❌ Ошибка CorsProxy: ' + parsed.error, 'err');
-                if (isAdmin) diagLog('   Что это значит: прокси-сервер не пропустил запрос (лимит, блокировка или настройки).', 'err');
                 showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
                 return;
             }
@@ -1137,8 +1182,8 @@ document.getElementById('popup-ok').addEventListener('click', function() {
             addressInput.disabled = true;
         })
         .catch(function(err) {
-            if (isAdmin) diagLog('❌ Сетевая ошибка: ' + err.message, 'err');
-            if (isAdmin) diagLog('   Что это значит: запрос не дошёл до CorsProxy или он не ответил.', 'err');
+            if (isAdmin) diagLog('❌ Все ' + SEND_MAX_ATTEMPTS + ' попыток провалились. Последняя ошибка: ' + err.message, 'err');
+            if (isAdmin) diagLog('   Что это значит: CorsProxy не ответил за ' + (SEND_TIMEOUT_MS * SEND_MAX_ATTEMPTS / 1000) + ' секунд.', 'err');
             showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
         });
 });
