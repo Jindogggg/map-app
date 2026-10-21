@@ -504,6 +504,7 @@ function diagLog(text, cls) {
 var urlParams = new URLSearchParams(window.location.search);
 var tgUserId = urlParams.get('tg_user_id') || '';
 var selectedCity = urlParams.get('city') || '';
+var platform = urlParams.get('platform') || '';
 
 if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = '';
 if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
