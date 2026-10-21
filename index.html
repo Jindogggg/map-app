@@ -1174,7 +1174,8 @@ document.getElementById('popup-ok').addEventListener('click', function() {
         '&method=variableChange' +
         '&variable=ADD_APP_TEST' +
         '&expression=' + encodeURIComponent('"' + line + '"') +
-        '&user_id=' + encodeURIComponent(tgUserId);
+        '&user_id=' + encodeURIComponent(tgUserId) +
+        '&platform=' + encodeURIComponent(platform);
 
     var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
 
