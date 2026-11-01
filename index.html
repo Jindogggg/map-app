@@ -54,11 +54,19 @@ body:not(.admin-mode) #popup-text { font-size: 10px; margin-bottom: 8px; line-he
 body:not(.admin-mode) .popup-buttons { gap: 6px; }
 body:not(.admin-mode) .popup-btn { padding: 8px 6px; font-size: 12px; border-radius: 20px; }
 
-ymaps[class*="search__suggest"] { width: 100% !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; border-radius: 12px !important; background: #fff !important; max-height: 300px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; touch-action: pan-y !important; }
-ymaps[class*="suggest-item"] { white-space: normal !important; word-wrap: break-word !important; padding: 10px 12px !important; border-bottom: 1px solid #dfe6ee !important; cursor: pointer !important; font-size: 13px !important; display: block !important; width: 100% !important; transition: background 0.15s !important; max-height: 80px !important; overflow: hidden !important; }
-ymaps[class*="suggest-item"]:hover { background: #f0f4fa !important; }
-ymaps[class*="suggest-item"]:active { background: #e3ecf8 !important; }
-ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
+ymaps[class*="search__suggest"] {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+ymaps[class*="suggest-item"] {
+  border-bottom: 1px solid #dfe6ee !important;
+}
+ymaps[class*="suggest-item"]:last-child {
+  border-bottom: none !important;
+}
 </style>
 </head>
 <body>
