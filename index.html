@@ -54,8 +54,10 @@ body:not(.admin-mode) #popup-text { font-size: 10px; margin-bottom: 8px; line-he
 body:not(.admin-mode) .popup-buttons { gap: 6px; }
 body:not(.admin-mode) .popup-btn { padding: 8px 6px; font-size: 12px; border-radius: 20px; }
 
-ymaps[class*="search__suggest"] {
-  max-height: 300px !important;
+ymaps[class*="search__suggest"],
+ymaps[class*="search__suggest"] > *,
+ymaps[class*="search__suggest"] > * > * {
+  max-height: 240px !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
