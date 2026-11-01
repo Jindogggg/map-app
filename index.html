@@ -57,17 +57,16 @@ body:not(.admin-mode) .popup-btn { padding: 8px 6px; font-size: 12px; border-rad
 ymaps[class*="search__suggest"],
 ymaps[class*="search__suggest"] > *,
 ymaps[class*="search__suggest"] > * > * {
-  max-height: 240px !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior: contain !important;
-  touch-action: pan-y !important;
+  max-height: none !important;
+  overflow-y: visible !important;
 }
 ymaps[class*="suggest-item"] {
-  border-bottom: 1px solid #dfe6ee !important;
-}
-ymaps[class*="suggest-item"]:last-child {
-  border-bottom: none !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  height: auto !important;
+  line-height: 1.4 !important;
 }
 </style>
 </head>
