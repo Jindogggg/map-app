@@ -57,17 +57,18 @@ body:not(.admin-mode) .popup-btn { padding: 8px 6px; font-size: 12px; border-rad
 ymaps[class*="search__suggest"],
 ymaps[class*="search__suggest"] > *,
 ymaps[class*="search__suggest"] > * > * {
-  max-height: none !important;
-  overflow-y: visible !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
 }
 ymaps[class*="suggest-item"] {
   white-space: normal !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
-  word-break: break-word !important;
   height: auto !important;
   line-height: 1.4 !important;
-  padding-bottom: 6px !important;
   border-bottom: 1px solid #dfe6ee !important;
 }
 ymaps[class*="suggest-item"]:last-child {
@@ -483,6 +484,12 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 
+function setParentHeight(h) {
+    try {
+        window.parent.postMessage({ type: 'address-iframe-height', height: h }, '*');
+    } catch(e) {}
+}
+
 var urlParams = new URLSearchParams(window.location.search);
 var tgUserId = urlParams.get('tg_user_id') || '';
 var selectedCity = urlParams.get('city') || '';
@@ -590,6 +597,13 @@ function createSuggestView() {
         var suggestView = new ymaps.SuggestView('address-input', { results: 10 });
         suggestViewCreated = true;
         diagLog('✅ SuggestView создан', 'ok');
+
+        suggestView.events.add('open', function () {
+            if (!isAdmin) setParentHeight(400);
+        });
+        suggestView.events.add('close', function () {
+            if (!isAdmin && !pendingResult) setParentHeight(90);
+        });
 
         suggestView.events.add('select', function (e) {
             var item = e.get('item');
@@ -1048,6 +1062,7 @@ function showPendingPopup(result, addressText, streetMissing) {
         popupOverlay.classList.add('visible');
         popupOverlay.style.display = 'flex';
     }
+    if (!isAdmin) setParentHeight(500);
     if (isAdmin) diagLog('📍 Показан попап: ' + addressText, 'new');
 }
 
@@ -1146,6 +1161,7 @@ function sendWithRetry(url) {
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
+    if (!isAdmin) setParentHeight(90);
     if (!pendingResult) return;
 
     var result = pendingResult;
@@ -1213,6 +1229,7 @@ document.getElementById('popup-ok').addEventListener('click', function() {
 document.getElementById('popup-cancel').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
+    if (!isAdmin) setParentHeight(90);
     pendingResult = null;
     if (isAdmin) diagLog('❌ Отменено', 'warn');
     selectedAddress = ''; selectedLink = ''; selectedCoords = null;
