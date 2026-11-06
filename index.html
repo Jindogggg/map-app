@@ -98,23 +98,23 @@ ymaps[class*="suggest-item"] {
 }
 ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 
-/* 1. БАЗОВЫЕ СТИЛИ (По умолчанию для пользователя) */
 #popup-overlay { 
     position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
     background: rgba(0,0,0,0.6); display: none; z-index: 100000; 
     padding: 0; 
-    align-items: flex-start; /* Сверху */
-    justify-content: center; 
+    margin: 0;
 }
 #popup-overlay.visible { display: flex !important; }
 
 #popup { 
     background: #fff; 
-    width: 100%; 
-    height: 100%;
-    border-radius: 0; 
-    margin: 0; 
     padding: 0; 
+    margin: 0;
+    width: 100%; 
+    height: 100%; 
+    max-width: none; 
+    max-height: none;
+    border-radius: 0; 
     box-shadow: none; 
     display: flex; 
     flex-direction: column; 
@@ -122,36 +122,56 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
     box-sizing: border-box;
 }
 
-#popup-title { font-size: 20px; font-weight: 700; color: #1e3c72; text-align: center; margin-bottom: 0; }
-#popup-address { background: #fff; padding: 0; border-radius: 12px; font-size: 12px; color: #1e3c72; font-weight: 600; text-align: center; word-break: break-word; line-height: 1.4; margin-bottom: 0; }
-#popup-text { font-size: 13px; line-height: 1.5; color: #555; text-align: center; margin-bottom: 0; }
-.popup-buttons { display: flex; gap: 10px; margin-top: 10px; }
-.popup-btn { flex: 1; padding: 16px; border: none; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; }
+#popup-title { 
+    font-size: 18px; 
+    font-weight: 700; 
+    color: #1e3c72; 
+    text-align: center; 
+    margin: 0; 
+    padding: 0;
+}
+
+#popup-address { 
+    background: #f0f4fa; 
+    padding: 0; 
+    margin: 0;
+    border-radius: 0; 
+    font-size: 14px; 
+    color: #1e3c72; 
+    font-weight: 600; 
+    text-align: center; 
+    word-break: break-word; 
+    line-height: 1.4; 
+}
+
+#popup-text { 
+    font-size: 13px; 
+    line-height: 1.5; 
+    color: #555; 
+    text-align: center; 
+    margin: 0; 
+    padding: 0;
+}
+
+.popup-buttons { 
+    display: flex; 
+    gap: 0; 
+    margin: 0; 
+    padding: 0;
+}
+
+.popup-btn { 
+    flex: 1; 
+    padding: 10px 0; /* Оставил минимальный вертикальный отступ только для кликабельности */
+    margin: 0;
+    border: none; 
+    border-radius: 0; 
+    font-size: 14px; 
+    font-weight: 600; 
+    cursor: pointer; 
+}
 .popup-btn-ok { background: #43a047; color: #fff; }
 .popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
-
-
-/* 2. ИСКЛЮЧЕНИЕ ДЛЯ АДМИНА (В айфрейме - Квадрат) */
-body.admin-mode:not(.test-mode) #popup { 
-    width: 100vw; 
-    height: 100vw; 
-    aspect-ratio: 1/1; 
-    border-radius: 12px; 
-}
-
-
-/* 3. ИСКЛЮЧЕНИЕ ДЛЯ АДМИНА (На ПК - по центру, уменьшено) */
-body.admin-mode.test-mode #popup-overlay { 
-    padding: 20px; 
-    align-items: center; /* По центру экрана */
-}
-body.admin-mode.test-mode #popup { 
-    width: 16.66vw; 
-    height: 16.66vh; 
-    max-width: 600px; 
-    max-height: 600px; 
-    border-radius: 12px; 
-}
 </style>
 </head>
 <body>
