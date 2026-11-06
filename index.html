@@ -1198,7 +1198,7 @@ function showPendingPopup(result, addressText, streetMissing) {
     if (popupAddress) popupAddress.textContent = addressText;
     var extraText = '';
     if (result.in_city === false) {
-        extraText += '<br><br>⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
+        extraText += '⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
     }
     if (streetMissing) {
         extraText += '<br><br>⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
