@@ -1201,7 +1201,7 @@ function showPendingPopup(result, addressText, streetMissing) {
         extraText += '⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
     }
     if (streetMissing) {
-        extraText += '<br><br>⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
+        extraText += '⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
     }
     if (popupText) popupText.innerHTML = 'Если адрес верный — нажмите «Подтвердить».' + extraText;
     if (popupOverlay) {
