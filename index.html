@@ -7,73 +7,83 @@
 <script async src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=939efcd0-c543-4a39-bbda-04cb43eff8df&suggest_apikey=bca2f613-9c3f-4eff-afaa-416e5dd85bc2&load=package.full,SuggestView" type="text/javascript"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-/* ВРЕМЕННО ДОБАВИЛ ОТСТУП 20px, ЧТОБЫ РАМКИ БЫЛО ВИДНО */
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; padding: 20px; margin: 0; }
-.card { background: transparent; border-radius: 0; box-shadow: none; max-width: 100%; width: 100%; margin: 0; padding: 0; }
-.admin-only { display: none !important; }
-.admin-mode .admin-only { display: block !important; }
-#header { padding: 12px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; background: #e3f2fd; color: #1565c0; border: 2px solid #1976d2; line-height: 1.5; }
-#header .version { display: inline-block; background: #1976d2; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-left: 6px; }
-#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto; }
-#diag .ok { color: #7ee787; }
-#diag .err { color: #ff7b72; }
-#diag .info { color: #79c0ff; }
-#diag .warn { color: #ffa657; }
-#diag .new { color: #d2a8ff; font-weight: bold; }
-#address-warning { font-size: 14px; line-height: 1.5; padding: 14px; border-radius: 10px; margin-bottom: 12px; display: none; font-weight: 600; }
-#address-warning.visible { display: block; }
-#address-warning.warn { background: #fff8e1; color: #8a6d00; border-left: 5px solid #f0a500; }
-#address-warning.error { background: #ffebee; color: #c62828; border-left: 5px solid #e53935; }
-#address-warning.ok { background: #e8f5e9; color: #2e7d32; border-left: 5px solid #43a047; }
+html, body { height: 100%; width: 100%; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; padding: 10px; display: flex; flex-direction: column; }
+.card { display: flex; flex-direction: column; width: 100%; height: 100%; flex-grow: 1; }
+
+/* Заглушка до загрузки */
+#loading-text { display: block; text-align: center; color: #8a9aa8; font-size: 14px; margin-top: 20px; }
+
+/* Главный контейнер, скрытый до готовности данных и Яндекса */
+#main-container { display: none; flex-direction: column; width: 100%; height: 100%; flex-grow: 1; }
+
+/* 1. Поле ввода */
 #address-input { 
     width: 100%; 
     padding: 16px; 
     font-size: 16px; 
     border: none; 
-    border-radius: 0; 
+    border-radius: 12px; 
     outline: none; 
-    box-sizing: border-box; 
-    margin-bottom: 12px; 
     background: #fff; 
-    box-shadow: none;
     color: #1e2c3a;
+    flex-shrink: 0;
+    margin-bottom: 0;
 }
 #address-input::placeholder { color: #8a9aa8; font-weight: 400; }
 #address-input:focus { border: none; outline: none; }
 #address-input.warning { border: 1px solid #f0a500; }
 #address-input.error { border: 1px solid #e53935; }
 #address-input:disabled { background: #f0f4fa; color: #8a9aa8; cursor: not-allowed; }
-#map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: #eef2f6; }
+
+/* 2. Подложка (резерв под плашку и список) */
+#suggest-underlay { flex-grow: 1; width: 100%; min-height: 10px; position: relative; }
+
+/* Плашка (абсолютно, поверх подложки, ничего не сдвигает) */
+#address-warning { 
+    position: absolute; 
+    top: 70px; 
+    left: 0; 
+    right: 0; 
+    font-size: 14px; 
+    line-height: 1.5; 
+    padding: 14px; 
+    border-radius: 10px; 
+    display: none; 
+    font-weight: 600; 
+    z-index: 100; 
+}
+#address-warning.visible { display: block; }
+#address-warning.warn { background: #fff8e1; color: #8a6d00; border-left: 5px solid #f0a500; }
+#address-warning.error { background: #ffebee; color: #c62828; border-left: 5px solid #e53935; }
+#address-warning.ok { background: #e8f5e9; color: #2e7d32; border-left: 5px solid #43a047; }
+
+/* 3. Админский блок (под подложкой) */
+.admin-wrapper { display: none; flex-direction: column; width: 100%; gap: 12px; flex-shrink: 0; padding-top: 10px; }
+body.admin-mode .admin-wrapper { display: flex; }
+#header { padding: 12px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: #e3f2fd; color: #1565c0; border: 2px solid #1976d2; line-height: 1.5; }
+#header .version { display: inline-block; background: #1976d2; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-left: 6px; }
+#diag { background: #1e2c3a; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 10px; padding: 8px 10px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+#diag .ok { color: #7ee787; }
+#diag .err { color: #ff7b72; }
+#diag .info { color: #79c0ff; }
+#diag .warn { color: #ffa657; }
+#diag .new { color: #d2a8ff; font-weight: bold; }
+#map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; background: #eef2f6; }
 .json-block { padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
 .json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
-#json-output { width: 100%; height: 300px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; box-sizing: border-box; color: #1e2c3a; background: #fff; }
+#json-output { width: 100%; height: 150px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; color: #1e2c3a; background: #fff; box-sizing: border-box; }
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
-#popup-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100000; padding: 20px; }
-#popup-overlay.visible { display: flex !important; }
-#popup { background: #fff; border-radius: 20px; padding: 24px 20px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
-#popup-title { font-size: 18px; font-weight: 700; color: #1e3c72; margin-bottom: 12px; text-align: center; }
-#popup-address { background: #f0f4fa; padding: 12px 14px; border-radius: 10px; font-size: 14px; color: #1e3c72; font-weight: 600; margin-bottom: 16px; text-align: center; word-break: break-word; line-height: 1.4; }
-#popup-text { font-size: 13px; line-height: 1.5; color: #555; margin-bottom: 20px; text-align: center; }
-.popup-buttons { display: flex; gap: 10px; }
-.popup-btn { flex: 1; padding: 12px; border: none; border-radius: 30px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.popup-btn-ok { background: #43a047; color: #fff; }
-.popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
 
-body:not(.admin-mode) #popup-overlay { padding: 4px; align-items: center; }
-body:not(.admin-mode) #popup { padding: 8px 10px; border-radius: 12px; max-width: 100%; max-height: calc(100vh - 8px); overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
-body:not(.admin-mode) #popup-title { font-size: 13px; margin-bottom: 4px; line-height: 1.2; }
-body:not(.admin-mode) #popup-address { font-size: 11px; padding: 5px 8px; margin-bottom: 6px; line-height: 1.3; border-radius: 8px; }
-body:not(.admin-mode) #popup-text { font-size: 10px; margin-bottom: 8px; line-height: 1.3; color: #444; }
-body:not(.admin-mode) .popup-buttons { gap: 6px; }
-body:not(.admin-mode) .popup-btn { padding: 8px 6px; font-size: 12px; border-radius: 20px; }
-
+/* Стили списка подсказок (сохраняем рабочие обрезки и переносы) */
 ymaps[class*="search__suggest"],
 ymaps[class*="search__suggest"] > *,
 ymaps[class*="search__suggest"] > * > * {
-  max-height: 220px !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   max-width: calc(100% - 2px) !important;
+  box-sizing: border-box !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   touch-action: pan-y !important;
@@ -86,35 +96,56 @@ ymaps[class*="suggest-item"] {
   line-height: 1.4 !important;
   border-bottom: 1px solid #dfe6ee !important;
 }
-ymaps[class*="suggest-item"]:last-child {
-  border-bottom: none !important;
-}
+ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 
-/* ВРЕМЕННЫЙ ТЕСТ: Красная рамка для поля, синяя для списка */
-#address-input {
-    outline: 2px solid red !important;
-}
-ymaps[class*="search__suggest"] {
-    outline: 2px solid blue !important;
-}
+/* Попап */
+#popup-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100000; padding: 20px; }
+#popup-overlay.visible { display: flex !important; }
+#popup { background: #fff; border-radius: 20px; padding: 24px 20px; max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+#popup-title { font-size: 18px; font-weight: 700; color: #1e3c72; margin-bottom: 12px; text-align: center; }
+#popup-address { background: #f0f4fa; padding: 12px 14px; border-radius: 10px; font-size: 14px; color: #1e3c72; font-weight: 600; margin-bottom: 16px; text-align: center; word-break: break-word; line-height: 1.4; }
+#popup-text { font-size: 13px; line-height: 1.5; color: #555; margin-bottom: 20px; text-align: center; }
+.popup-buttons { display: flex; gap: 10px; }
+.popup-btn { flex: 1; padding: 12px; border: none; border-radius: 30px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.popup-btn-ok { background: #43a047; color: #fff; }
+.popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
+
+body:not(.admin-mode) #popup-overlay { padding: 0; }
+body:not(.admin-mode) #popup { max-width: 100%; height: 100%; border-radius: 0; display: flex; flex-direction: column; justify-content: center; box-shadow: none; }
+body:not(.admin-mode) .popup-btn { padding: 16px; font-size: 16px; }
+body.admin-mode #popup { max-width: 600px; width: 90%; height: auto; aspect-ratio: 16/9; display: flex; flex-direction: column; justify-content: center; }
 </style>
 </head>
 <body>
-<div class="card">
-<div id="header" class="admin-only">
-    ID: <b id="header-id">...</b> <span class="version">v45</span><br>
-    🏙️ Город: <b id="header-city">...</b>
+
+<div id="loading-text">Загрузка...</div>
+
+<div class="card" id="main-container">
+    <!-- 1. Поле ввода -->
+    <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
+    
+    <!-- 2. Подложка (резерв) -->
+    <div id="suggest-underlay"></div>
+    
+    <!-- 3. Админский блок -->
+    <div class="admin-wrapper" id="admin-wrapper">
+        <div id="header">
+            ID: <b id="header-id">...</b> <span class="version">v50</span><br>
+            🏙️ Город: <b id="header-city">...</b>
+        </div>
+        <div id="diag">=== v50 ===</div>
+        <div id="map"></div>
+        <div class="json-block">
+            <div class="json-block-title">📋 JSON (только для админов):</div>
+            <textarea id="json-output" readonly placeholder="Выберите точный адрес..."></textarea>
+            <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
+        </div>
+    </div>
 </div>
+
+<!-- Плашка (висит поверх подложки) -->
 <div id="address-warning"></div>
-<div id="diag" class="admin-only">=== v45 ===</div>
-<input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
-<div id="map" class="admin-only"></div>
-<div class="json-block admin-only">
-    <div class="json-block-title">📋 JSON (только для админов):</div>
-    <textarea id="json-output" readonly placeholder="Выберите точный адрес..."></textarea>
-    <button class="btn-copy" id="copy-btn" disabled>📋 Скопировать JSON</button>
-</div>
-</div>
+
 <div id="popup-overlay">
     <div id="popup">
         <div id="popup-title">📍 Подтвердите адрес</div>
@@ -128,7 +159,7 @@ ymaps[class*="search__suggest"] {
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v45';
+var SCRIPT_VERSION = 'v50';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzle.bot/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -507,12 +538,6 @@ function diagLog(text, cls) {
     diag.scrollTop = diag.scrollHeight;
 }
 
-function setParentHeight(h) {
-    try {
-        window.parent.postMessage({ type: 'address-iframe-height', height: h }, '*');
-    } catch(e) {}
-}
-
 var urlParams = new URLSearchParams(window.location.search);
 var tgUserId = urlParams.get('tg_user_id') || '';
 var selectedCity = urlParams.get('city') || '';
@@ -535,6 +560,12 @@ var pendingResult = null;
 var pendingLocalityMode = 'не требуется';
 var suggestViewCreated = false;
 
+// Флаги готовности
+var isDataReady = false;
+var isYmapsReady = false;
+
+var mainContainer = document.getElementById('main-container');
+var loadingText = document.getElementById('loading-text');
 var headerId = document.getElementById('header-id');
 var headerCity = document.getElementById('header-city');
 var jsonOutput = document.getElementById('json-output');
@@ -546,23 +577,46 @@ var popupAddress = document.getElementById('popup-address');
 var popupText = document.getElementById('popup-text');
 
 diagLog(SCRIPT_VERSION + ' старт', 'info');
-diagLog('URL параметры: tg_user_id=' + tgUserId + ', city=' + selectedCity, 'new');
-diagLog('Настройки отправки: таймаут ' + SEND_TIMEOUT_MS + ' мс, попыток ' + SEND_MAX_ATTEMPTS, 'info');
 
-if (!tgUserId || !selectedCity) {
-    setTimeout(function() {
-        if (!tgUserId) { tgUserId = DEFAULT_USER_ID; }
-        if (!selectedCity) { selectedCity = DEFAULT_CITY; }
-        isTestMode = true;
-        enableAdminMode();
-        diagLog('🧪 ТЕСТ-РЕЖИМ (браузер)', 'warn');
-        updateHeader();
+// --- ЛОГИКА ЗАГРУЗКИ И ОТОБРАЖЕНИЯ ---
+
+function showUI() {
+    if (isDataReady && isYmapsReady) {
+        loadingText.style.display = 'none';
+        mainContainer.style.display = 'flex';
+        
+        if (isAdmin) {
+            document.body.classList.add('admin-mode');
+            if (headerId) headerId.textContent = tgUserId;
+            if (headerCity) headerCity.textContent = selectedCity;
+            if (!myMap) initMap();
+        }
+        
+        if (!suggestViewCreated) createSuggestView();
+    }
+}
+
+function loadData() {
+    diagLog('URL параметры: tg_user_id=' + tgUserId + ', city=' + selectedCity, 'new');
+    
+    if (!tgUserId || !selectedCity) {
+        setTimeout(function() {
+            if (!tgUserId) { tgUserId = DEFAULT_USER_ID; }
+            if (!selectedCity) { selectedCity = DEFAULT_CITY; }
+            isTestMode = true;
+            if (checkAdmin(tgUserId)) isAdmin = true;
+            
+            diagLog('🧪 ТЕСТ-РЕЖИМ (браузер)', 'warn');
+            isDataReady = true;
+            requestCityArea();
+            showUI();
+        }, 2000);
+    } else {
+        if (checkAdmin(tgUserId)) isAdmin = true;
+        isDataReady = true;
         requestCityArea();
-    }, 2000);
-} else {
-    if (checkAdmin(tgUserId)) enableAdminMode();
-    updateHeader();
-    requestCityArea();
+        showUI();
+    }
 }
 
 function checkAdmin(id) {
@@ -573,42 +627,23 @@ function checkAdmin(id) {
     return false;
 }
 
-function enableAdminMode() {
-    isAdmin = true;
-    document.body.classList.add('admin-mode');
-}
-
-function updateHeader() {
-    if (!isAdmin) return;
-    if (headerId) headerId.textContent = tgUserId || '...';
-    if (headerCity) headerCity.textContent = selectedCity || '...';
-}
-
-function waitForYmaps(cb) {
+function waitForYmaps() {
     if (typeof ymaps !== 'undefined' && ymaps.ready) {
-        ymaps.ready(cb);
-        return;
+        ymaps.ready(function() {
+            diagLog('✅ Yandex API загрузился', 'ok');
+            isYmapsReady = true;
+            showUI();
+        });
+    } else {
+        setTimeout(waitForYmaps, 100);
     }
-    var attempts = 0;
-    var iv = setInterval(function() {
-        attempts++;
-        if (typeof ymaps !== 'undefined' && ymaps.ready) {
-            clearInterval(iv);
-            diagLog('✅ Yandex API загрузился (попыток: ' + attempts + ')', 'ok');
-            ymaps.ready(cb);
-        } else if (attempts > 600) {
-            clearInterval(iv);
-            diagLog('❌ Yandex API не загрузился за 60 сек', 'err');
-            showWarning('❌ Не удалось загрузить карту. Обновите страницу.', 'error');
-        }
-    }, 100);
 }
 
-waitForYmaps(function () {
-    diagLog('ymaps готов ✅', 'ok');
-    if (isAdmin) initMap();
-    createSuggestView();
-});
+// Запуск процессов
+loadData();
+waitForYmaps();
+
+// --- РАБОТА С АДРЕСОМ ---
 
 function createSuggestView() {
     if (suggestViewCreated) return;
@@ -621,50 +656,66 @@ function createSuggestView() {
         suggestViewCreated = true;
         diagLog('✅ SuggestView создан', 'ok');
 
+        // Адаптивная высота списка
         suggestView.events.add('open', function () {
-            if (!isAdmin) setParentHeight(400);
-        });
-        suggestView.events.add('close', function () {
-            if (!isAdmin && !pendingResult) setParentHeight(90);
+            var sList = document.querySelector('ymaps[class*="search__suggest"]');
+            if (!sList) return;
+            var inputBottom = addressInput.getBoundingClientRect().bottom;
+            var availableSpace = window.innerHeight - inputBottom - 10;
+            if (availableSpace > 100) {
+                sList.style.maxHeight = availableSpace + 'px';
+            }
         });
 
         suggestView.events.add('select', function (e) {
             var item = e.get('item');
-            var value = item.value;
-            var displayName = item.displayName || value;
-
-            selectedAddress = displayName || value;
-            selectedLink = YANDEX_MAPS_PREFIX + encodeURIComponent(value);
-
-            if (isAdmin) diagLog('👤 Выбран адрес: ' + selectedAddress, 'info');
-
-            showWarning('⏳ Проверяем адрес...', 'warn');
-            if (jsonOutput) jsonOutput.value = 'Загрузка...';
-            if (copyBtn) copyBtn.disabled = true;
-
-            ymaps.geocode(value, { results: 1 }).then(function (res) {
-                var g = res.geoObjects.get(0);
-                if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
-                var coords = g.geometry.getCoordinates();
-                selectedCoords = coords;
-                if (myMap && isAdmin) {
-                    myMap.setCenter(coords, 16);
-                    myPlacemark.geometry.setCoordinates(coords);
-                }
-
-                fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
-                    if (result) {
-                        if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
-                        if (copyBtn) copyBtn.disabled = false;
-                    }
-                });
-            }).catch(function(e) {
-                showWarning('❌ Ошибка: ' + e.message, 'error');
-            });
+            processAddress(item.value);
         });
     } catch(e) {
         diagLog('❌ Ошибка создания SuggestView: ' + e.message, 'err');
     }
+}
+
+// Обработчик Enter для ручного ввода
+addressInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        var val = addressInput.value.trim();
+        if (val) processAddress(val);
+    }
+});
+
+function processAddress(value) {
+    var displayName = value; // если выбрано из подсказки, текст уже нормализован
+    
+    selectedAddress = displayName;
+    selectedLink = YANDEX_MAPS_PREFIX + encodeURIComponent(value);
+
+    if (isAdmin) diagLog('👤 Выбран/введен адрес: ' + selectedAddress, 'info');
+
+    showWarning('⏳ Проверяем адрес...', 'warn');
+    if (jsonOutput) jsonOutput.value = 'Загрузка...';
+    if (copyBtn) copyBtn.disabled = true;
+
+    ymaps.geocode(value, { results: 1 }).then(function (res) {
+        var g = res.geoObjects.get(0);
+        if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
+        var coords = g.geometry.getCoordinates();
+        selectedCoords = coords;
+        if (myMap && isAdmin) {
+            myMap.setCenter(coords, 16);
+            myPlacemark.geometry.setCoordinates(coords);
+        }
+
+        fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
+            if (result) {
+                if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
+                if (copyBtn) copyBtn.disabled = false;
+            }
+        });
+    }).catch(function(e) {
+        showWarning('❌ Ошибка: ' + e.message, 'error');
+    });
 }
 
 function requestCityArea() {
@@ -1085,7 +1136,6 @@ function showPendingPopup(result, addressText, streetMissing) {
         popupOverlay.classList.add('visible');
         popupOverlay.style.display = 'flex';
     }
-    if (!isAdmin) setParentHeight(500);
     if (isAdmin) diagLog('📍 Показан попап: ' + addressText, 'new');
 }
 
@@ -1184,7 +1234,6 @@ function sendWithRetry(url) {
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
-    if (!isAdmin) setParentHeight(90);
     if (!pendingResult) return;
 
     var result = pendingResult;
@@ -1252,7 +1301,6 @@ document.getElementById('popup-ok').addEventListener('click', function() {
 document.getElementById('popup-cancel').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
     popupOverlay.style.display = 'none';
-    if (!isAdmin) setParentHeight(90);
     pendingResult = null;
     if (isAdmin) diagLog('❌ Отменено', 'warn');
     selectedAddress = ''; selectedLink = ''; selectedCoords = null;
