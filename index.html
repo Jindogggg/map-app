@@ -107,7 +107,7 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 #popup-overlay.visible { display: flex !important; }
 
 #popup { 
-    background: #fff; 
+    background: #f0f4fa; 
     padding: 0; 
     margin: 0;
     width: 100%; 
@@ -118,7 +118,7 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
     box-shadow: none; 
     display: flex; 
     flex-direction: column; 
-    justify-content: flex-start; 
+    justify-content: space-between; 
     box-sizing: border-box;
 }
 
@@ -132,7 +132,7 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 }
 
 #popup-address { 
-    background: #f0f4fa; 
+    background: #fff; 
     padding: 0; 
     margin: 0;
     border-radius: 0; 
@@ -163,16 +163,15 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 
 .popup-btn { 
     flex: 1; 
-    padding: 10px 0; /* Оставил минимальный вертикальный отступ только для кликабельности */
-    margin: 0;
+    padding: 0;
     border: none; 
     border-radius: 0; 
-    font-size: 14px; 
+    font-size: 16px; 
     font-weight: 600; 
     cursor: pointer; 
 }
-.popup-btn-ok { background: #43a047; color: #fff; }
-.popup-btn-cancel { background: #f0f4fa; color: #1e2c3a; }
+.popup-btn-ok { background: #34C759; color: #fff; }
+.popup-btn-cancel { background: #ff3b30; color: #fff; }
 </style>
 </head>
 <body>
