@@ -575,7 +575,15 @@ var addressWarning = document.getElementById('address-warning');
 var popupOverlay = document.getElementById('popup-overlay');
 var popupAddress = document.getElementById('popup-address');
 var popupText = document.getElementById('popup-text');
-
+function logHeights(tag) {
+    if (!isAdmin) return;
+    var underlay = document.getElementById('suggest-underlay');
+    var hInput = addressInput.offsetHeight;
+    var hWarning = addressWarning.offsetHeight;
+    var hUnderlay = underlay ? underlay.offsetHeight : 0;
+    var pos = getComputedStyle(addressWarning).position;
+    diagLog(tag + ' | Поле: ' + hInput + ' | Плашка: ' + hWarning + ' | Подложка: ' + hUnderlay + ' | Позиция: ' + pos, 'info');
+}
 diagLog(SCRIPT_VERSION + ' старт', 'info');
 
 // --- ЛОГИКА ЗАГРУЗКИ И ОТОБРАЖЕНИЯ ---
@@ -1027,7 +1035,12 @@ function handleGeocoderData(data, baseJson, onDone) {
     var areaMatches = areasMatch(areaArr);
 
     if (!areaMatches) {
-        if (houseStr.length === 0) { finishFail('Введите точный адрес (номер дома).', onDone); return; }
+        if (houseStr.length === 0) { 
+    logHeights('ДО: Введите номер дома');
+    finishFail('Введите точный адрес (номер дома).', onDone); 
+    logHeights('ПОСЛЕ: Введите номер дома');
+    return; 
+}
         var streetMissing = (streetStr.length === 0);
         var localityStr = localityArr.length > 0 ? localityArr[0] : '';
         var district = [];
