@@ -98,37 +98,37 @@ ymaps[class*="suggest-item"] {
 }
 ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 
+/* 1. Оверлей */
 #popup-overlay { 
     position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
     background: rgba(0,0,0,0.6); display: none; z-index: 100000; 
-    padding: 0; 
-    margin: 0;
 }
 #popup-overlay.visible { display: flex !important; }
 
+/* 2. Основной контейнер попапа */
 #popup { 
     background: #f0f4fa;
     width: 100%; 
     height: 100%; 
-    max-width: none; 
-    max-height: none;
-    border-radius: 0; 
-    box-shadow: none; 
     display: flex; 
     flex-direction: column; 
     justify-content: space-between; 
     box-sizing: border-box;
 }
 
+/* 3. Общие стили для всех текстов внутри */
+#popup-title, #popup-address, #popup-text {
+    text-align: center;
+}
+
+/* 4. Заголовок */
 #popup-title { 
     font-size: 18px; 
     font-weight: 700; 
     color: #1e3c72; 
-    text-align: center; 
-    margin: 0; 
-    padding: 0;
 }
 
+/* 5. Блок с адресом */
 #popup-address { 
     background: #fff; 
     padding: 7px 0;
@@ -136,27 +136,24 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
     font-size: 14px; 
     color: #1e3c72; 
     font-weight: 600; 
-    text-align: center; 
     word-break: break-word; 
     line-height: 1.4; 
 }
 
+/* 6. Поясняющий текст */
 #popup-text { 
     font-size: 13px; 
     line-height: 1.5; 
     color: #555; 
-    text-align: center; 
-    margin: 0; 
-    padding: 0;
 }
 
+/* 7. Контейнер для кнопок */
 .popup-buttons { 
     display: flex; 
     gap: 12px; 
-    margin: 0; 
-    padding: 0;
 }
 
+/* 8. Базовый стиль кнопок (общий) */
 .popup-btn { 
     flex: 1; 
     padding: 8px 0;
@@ -165,9 +162,12 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
     font-size: 16px; 
     font-weight: 600; 
     cursor: pointer;
+    color: #fff; /* Перенесли сюда, так как у обеих кнопок белый текст */
 }
-.popup-btn-ok { background: #34C759; color: #fff; }
-.popup-btn-cancel { background: #ff3b30; color: #fff; }
+
+/* 9. Индивидуальные цвета кнопок */
+.popup-btn-ok { background: #34C759; }
+.popup-btn-cancel { background: #ff3b30; }
 </style>
 </head>
 <body>
