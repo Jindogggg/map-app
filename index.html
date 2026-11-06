@@ -1199,10 +1199,10 @@ function showPendingPopup(result, addressText, streetMissing) {
     if (popupAddress) popupAddress.textContent = addressText;
     var extraText = '';
     if (result.in_city === false) {
-        extraText += '⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
+        extraText += '<br>⚠️ Адрес вне города. Стоимость и дата заявки, возможно, потребуют изменения по согласованию с исполнителем.';
     }
     if (streetMissing) {
-        extraText += '⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
+        extraText += '<br>⚠️ Улица не указана. Возможно, данные в Яндекс.Картах неполные.';
     }
     if (popupText) popupText.innerHTML = 'Если адрес верный — нажмите «Подтвердить».' + extraText;
     if (popupOverlay) {
