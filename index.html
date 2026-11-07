@@ -76,18 +76,15 @@ body.admin-mode .admin-wrapper { display: flex; }
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
 
-/* Стили списка подсказок (сохраняем рабочие обрезки и переносы) */
-ymaps[class*="search__suggest"],
-ymaps[class*="search__suggest"] > *,
-ymaps[class*="search__suggest"] > * > * {
+/* Базовые стили для списка подсказок */
+ymaps[class*="search__suggest"] {
+  max-height: 220px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  max-width: calc(100% - 2px) !important;
+  max-width: 100% !important;
   box-sizing: border-box !important;
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior: contain !important;
-  touch-action: pan-y !important;
 }
+
 ymaps[class*="suggest-item"] {
   white-space: normal !important;
   word-wrap: break-word !important;
@@ -96,7 +93,10 @@ ymaps[class*="suggest-item"] {
   line-height: 1.4 !important;
   border-bottom: 1px solid #dfe6ee !important;
 }
-ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
+
+ymaps[class*="suggest-item"]:last-child {
+  border-bottom: none !important;
+}
 
 /* 1. Оверлей */
 #popup-overlay { 
