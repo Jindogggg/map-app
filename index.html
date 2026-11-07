@@ -168,6 +168,21 @@ ymaps[class*="suggest-item"]:last-child { border-bottom: none !important; }
 /* 9. Индивидуальные цвета кнопок */
 .popup-btn-ok { background: #34C759; }
 .popup-btn-cancel { background: #ff3b30; }
+    
+/* Админ в айфрейме: высота по контенту */
+body.admin-mode:not(.test-mode) #popup {
+    height: auto;
+}
+
+/* Админ на ПК (тест-режим): по центру, ширина и высота по контенту */
+body.admin-mode.test-mode #popup-overlay {
+    align-items: center;
+    justify-content: center;
+}
+body.admin-mode.test-mode #popup {
+    width: auto;
+    height: auto;
+}
 </style>
 </head>
 <body>
