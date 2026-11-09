@@ -164,6 +164,50 @@ body.admin-mode.test-mode #popup {
     width: 500px;
     height: auto;
 }
+/* ==================== НАЧАЛО БЛОКА СПИСКА ==================== */
+ymaps[class*="search__suggest"] {
+  /* Убираем тень и скругления */
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  
+  /* Отрезаем 2px для симметрии и защиты от дергания страницы */
+  width: calc(100% - 2px) !important;
+  max-width: calc(100% - 2px) !important;
+  
+  /* Ограничиваем высоту и добавляем скролл */
+  max-height: 250px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+  
+  /* Для свайпа на телефоне */
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+
+ymaps[class*="suggest-item"] {
+  /* Разрешаем переносы и рисуем разделительные линии */
+  white-space: normal !important;
+  border-bottom: 1px solid #dfe6ee !important;
+  display: block !important;
+  height: auto !important;
+  line-height: 1.4 !important;
+}
+
+/* Достаем до внутренних элементов Яндекса, чтобы убрать троеточие (...) и разрешить перенос */
+ymaps[class*="suggest-item"] * {
+  white-space: normal !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+ymaps[class*="suggest-item"]:last-child {
+  border-bottom: none !important;
+}
+/* ==================== КОНЕЦ БЛОКА СПИСКА ==================== */    
 </style>
 </head>
 <body>
@@ -180,10 +224,10 @@ body.admin-mode.test-mode #popup {
     <!-- 3. Админский блок -->
     <div class="admin-wrapper" id="admin-wrapper">
         <div id="header">
-            ID: <b id="header-id">...</b> <span class="version">v54</span><br>
+            ID: <b id="header-id">...</b> <span class="version">v55</span><br>
             🏙️ Город: <b id="header-city">...</b>
         </div>
-        <div id="diag">=== v54 ===</div>
+        <div id="diag">=== v55 ===</div>
         <div id="map"></div>
         <div class="json-block">
             <div class="json-block-title">📋 JSON (только для админов):</div>
@@ -209,7 +253,7 @@ body.admin-mode.test-mode #popup {
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v54';
+var SCRIPT_VERSION = 'v55';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzle.bot/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
