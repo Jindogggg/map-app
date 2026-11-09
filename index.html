@@ -720,10 +720,13 @@ function createSuggestView() {
         // Адаптивная высота списка
         suggestView.events.add('open', function () {
             
+            diagLog('СОБЫТИЕ OPEN СРАБОТАЛО', 'new');
+
             // --- ЛОГ СТИЛЕЙ ЯНДЕКСА ---
             setTimeout(function() {
                 var sList = document.querySelector('ymaps[class*="search__suggest"]');
                 if (sList) {
+                    diagLog('Элемент списка НАЙДЕН', 'ok');
                     var cs = getComputedStyle(sList);
                     var out = 'Стили списка: ' +
                         ' | width=' + cs.width +
@@ -734,6 +737,8 @@ function createSuggestView() {
                         ' | position=' + cs.position;
                     diagLog(out, 'warn');
                     diagLog('Размеры: offsetWidth=' + sList.offsetWidth + ', offsetHeight=' + sList.offsetHeight, 'warn');
+                } else {
+                    diagLog('❌ Элемент списка НЕ НАЙДЕН (класс не тот)', 'err');
                 }
             }, 100);
             // --- КОНЕЦ ЛОГА ---
