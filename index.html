@@ -702,6 +702,8 @@ function waitForYmaps() {
 loadData();
 waitForYmaps();
 
+/* ==================== НАЧАЛО БЛОКА ОБРАБОТКИ СПИСКА ==================== */
+
 // --- РАБОТА С АДРЕСОМ ---
 
 function createSuggestView() {
@@ -717,24 +719,26 @@ function createSuggestView() {
 
         // Адаптивная высота списка
         suggestView.events.add('open', function () {
-            var sList = document.querySelector('ymaps[class*="search__suggest"]');
             
             // --- ЛОГ СТИЛЕЙ ЯНДЕКСА ---
-            if (sList && isAdmin) {
-                var cs = getComputedStyle(sList);
-                var out = 'Стили списка: ' +
-                    ' | width=' + cs.width +
-                    ' | height=' + cs.height +
-                    ' | max-height=' + cs.maxHeight +
-                    ' | overflow-y=' + cs.overflowY +
-                    ' | touch-action=' + cs.touchAction +
-                    ' | display=' + cs.display +
-                    ' | position=' + cs.position;
-                diagLog(out, 'warn');
-                diagLog('Размеры списка: offsetWidth=' + sList.offsetWidth + ', offsetHeight=' + sList.offsetHeight, 'warn');
-            }
+            setTimeout(function() {
+                var sList = document.querySelector('ymaps[class*="search__suggest"]');
+                if (sList) {
+                    var cs = getComputedStyle(sList);
+                    var out = 'Стили списка: ' +
+                        ' | width=' + cs.width +
+                        ' | height=' + cs.height +
+                        ' | max-height=' + cs.maxHeight +
+                        ' | overflow-y=' + cs.overflowY +
+                        ' | display=' + cs.display +
+                        ' | position=' + cs.position;
+                    diagLog(out, 'warn');
+                    diagLog('Размеры: offsetWidth=' + sList.offsetWidth + ', offsetHeight=' + sList.offsetHeight, 'warn');
+                }
+            }, 100);
             // --- КОНЕЦ ЛОГА ---
 
+            var sList = document.querySelector('ymaps[class*="search__suggest"]');
             if (!sList) return;
             var inputBottom = addressInput.getBoundingClientRect().bottom;
             var availableSpace = window.innerHeight - inputBottom - 10;
@@ -760,6 +764,8 @@ addressInput.addEventListener('keydown', function(e) {
         if (val) processAddress(val);
     }
 });
+
+/* ==================== КОНЕЦ БЛОКА ОБРАБОТКИ СПИСКА ==================== */
 
 function processAddress(value) {
     var displayName = value; // если выбрано из подсказки, текст уже нормализован
