@@ -180,10 +180,10 @@ body.admin-mode.test-mode #popup {
     <!-- 3. Админский блок -->
     <div class="admin-wrapper" id="admin-wrapper">
         <div id="header">
-            ID: <b id="header-id">...</b> <span class="version">v53</span><br>
+            ID: <b id="header-id">...</b> <span class="version">v54</span><br>
             🏙️ Город: <b id="header-city">...</b>
         </div>
-        <div id="diag">=== v53 ===</div>
+        <div id="diag">=== v54 ===</div>
         <div id="map"></div>
         <div class="json-block">
             <div class="json-block-title">📋 JSON (только для админов):</div>
@@ -209,7 +209,7 @@ body.admin-mode.test-mode #popup {
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v53';
+var SCRIPT_VERSION = 'v54';
 var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
 var PUZZLEBOT_API = 'https://api.puzzle.bot/';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
@@ -726,25 +726,23 @@ function createSuggestView() {
     }
 }
 
-// Следим за вводом текста, чтобы поймать появление списка
+// Ловим ввод текста, чтобы задать динамическую высоту
 addressInput.addEventListener('input', function() {
-    // Ждем 500мс, чтобы Яндекс успел отрисовать выпадающий список
+    // Ждем, пока Яндекс отрисует список
     setTimeout(function() {
         var sList = document.querySelector('ymaps[class*="search__suggest"]');
-        if (sList && isAdmin) {
-            diagLog('📋 Элемент списка НАЙДЕН!', 'ok');
-            var cs = getComputedStyle(sList);
-            var out = 'Стили списка: ' +
-                ' | width=' + cs.width +
-                ' | height=' + cs.height +
-                ' | max-height=' + cs.maxHeight +
-                ' | overflow-y=' + cs.overflowY +
-                ' | display=' + cs.display +
-                ' | position=' + cs.position;
-            diagLog(out, 'warn');
-            diagLog('Размеры: offsetWidth=' + sList.offsetWidth + ', offsetHeight=' + sList.offsetHeight, 'warn');
+        if (sList) {
+            // Считаем, сколько места осталось до низа экрана
+            var inputBottom = addressInput.getBoundingClientRect().bottom;
+            var availableSpace = window.innerHeight - inputBottom - 10;
+            
+            // Если места больше 100px, применяем его. 
+            // Иначе сработает резервное max-height: 250px из CSS
+            if (availableSpace > 100) {
+                sList.style.maxHeight = availableSpace + 'px';
+            }
         }
-    }, 500);
+    }, 150);
 });
 
 // Обработчик Enter для ручного ввода
@@ -757,6 +755,7 @@ addressInput.addEventListener('keydown', function(e) {
 });
 
 /* ==================== КОНЕЦ БЛОКА ОБРАБОТКИ СПИСКА ==================== */
+    
 function processAddress(value) {
     var displayName = value; // если выбрано из подсказки, текст уже нормализован
     
