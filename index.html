@@ -718,6 +718,23 @@ function createSuggestView() {
         // Адаптивная высота списка
         suggestView.events.add('open', function () {
             var sList = document.querySelector('ymaps[class*="search__suggest"]');
+            
+            // --- ЛОГ СТИЛЕЙ ЯНДЕКСА ---
+            if (sList && isAdmin) {
+                var cs = getComputedStyle(sList);
+                var out = 'Стили списка: ' +
+                    ' | width=' + cs.width +
+                    ' | height=' + cs.height +
+                    ' | max-height=' + cs.maxHeight +
+                    ' | overflow-y=' + cs.overflowY +
+                    ' | touch-action=' + cs.touchAction +
+                    ' | display=' + cs.display +
+                    ' | position=' + cs.position;
+                diagLog(out, 'warn');
+                diagLog('Размеры списка: offsetWidth=' + sList.offsetWidth + ', offsetHeight=' + sList.offsetHeight, 'warn');
+            }
+            // --- КОНЕЦ ЛОГА ---
+
             if (!sList) return;
             var inputBottom = addressInput.getBoundingClientRect().bottom;
             var availableSpace = window.innerHeight - inputBottom - 10;
