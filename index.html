@@ -1363,7 +1363,8 @@ document.getElementById('popup-ok').addEventListener('click', function() {
 if (isAdmin) diagLog('📤 Строка (7 полей, 5–7 — только query): ' + line, 'new');
 window.parent.postMessage(JSON.stringify({ type: 'pz-address', data: line }), '*');
 if (isAdmin) diagLog('📨 Постмесседж родителю отправлен', 'ok');
-
+window.parent.postMessage(JSON.stringify({ type: 'pz-close' }), '*');      // ← НОВАЯ
+if (isAdmin) diagLog('📨 Сигнал закрытия попапа отправлен родителю', 'ok'); // ← НОВАЯ
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
         '&method=variableChange' +
