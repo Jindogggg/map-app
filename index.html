@@ -1360,7 +1360,9 @@ document.getElementById('popup-ok').addEventListener('click', function() {
     pendingResult = null;
 
     var line = buildTransferLine(result);
-    if (isAdmin) diagLog('📤 Строка (7 полей, 5–7 — только query): ' + line, 'new');
+if (isAdmin) diagLog('📤 Строка (7 полей, 5–7 — только query): ' + line, 'new');
+window.parent.postMessage(JSON.stringify({ type: 'pz-address', data: line }), '*');
+if (isAdmin) diagLog('📨 Постмесседж родителю отправлен', 'ok');
 
     var targetUrl = PUZZLEBOT_API +
         '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
