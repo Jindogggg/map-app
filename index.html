@@ -1470,6 +1470,17 @@ if (copyBtn) {
         } catch (e) {}
     });
 }
+    <script>
+    /* ТЕСТ постмесседжа: шлём родителю пинг через 1.5 секунды после загрузки */
+    setTimeout(function () {
+        window.parent.postMessage(
+            JSON.stringify({ type: 'pz-address-test', text: 'ping от map-app' }),
+            '*'
+        );
+        console.log('MAP-APP: тестовый постмесседж отправлен');
+    }, 1500);
+</script>
+
 </script>
 </body>
 </html>
