@@ -36,7 +36,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #address-input.error { border: 1px solid #e53935; }
 #address-input:disabled { background: #f0f4fa; color: #8a9aa8; cursor: not-allowed; }
 
-/* 2. Подложка (резерв под плашку и список) */
+/* 2. Карта — сразу под полем ввода, видна всем */
+#map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; background: #eef2f6; margin-top: 10px; flex-shrink: 0; }
+
+/* 3. Подложка (резерв под плашку и список) */
 #suggest-underlay { flex-grow: 1; width: 100%; min-height: 10px; position: relative; }
 
 /* Плашка (абсолютно, поверх подложки, ничего не сдвигает) */
@@ -58,7 +61,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #address-warning.error { background: #ffebee; color: #c62828; border-left: 5px solid #e53935; }
 #address-warning.ok { background: #e8f5e9; color: #2e7d32; border-left: 5px solid #43a047; }
 
-/* 3. Админский блок (под подложкой) */
+/* 4. Админский блок (под подложкой) */
 .admin-wrapper { display: none; flex-direction: column; width: 100%; gap: 12px; flex-shrink: 0; padding-top: 10px; }
 body.admin-mode .admin-wrapper { display: flex; }
 #header { padding: 12px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: #e3f2fd; color: #1565c0; border: 2px solid #1976d2; line-height: 1.5; }
@@ -69,14 +72,11 @@ body.admin-mode .admin-wrapper { display: flex; }
 #diag .info { color: #79c0ff; }
 #diag .warn { color: #ffa657; }
 #diag .new { color: #d2a8ff; font-weight: bold; }
-#map { width: 100%; height: 200px; border-radius: 14px; overflow: hidden; background: #eef2f6; }
 .json-block { padding: 12px; background: #f0f4fa; border-radius: 12px; border: 2px dashed #2a5298; }
 .json-block-title { font-size: 13px; font-weight: 600; color: #1e3c72; margin-bottom: 8px; }
 #json-output { width: 100%; height: 150px; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #d0d9e6; border-radius: 8px; resize: vertical; color: #1e2c3a; background: #fff; box-sizing: border-box; }
 .btn-copy { background: #43a047; color: #fff; border: none; border-radius: 30px; padding: 9px 16px; font-size: 13px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
 .btn-copy:disabled { background: #c0cbd9; cursor: not-allowed; }
-
-
 
 /* 1. Оверлей */
 #popup-overlay { 
@@ -142,7 +142,7 @@ body.admin-mode .admin-wrapper { display: flex; }
     font-size: 16px; 
     font-weight: 600; 
     cursor: pointer;
-    color: #fff; /* Перенесли сюда, так как у обеих кнопок белый текст */
+    color: #fff;
 }
 
 /* 9. Индивидуальные цвета кнопок */
@@ -166,27 +166,19 @@ body.admin-mode.test-mode #popup {
 }
 /* ==================== НАЧАЛО БЛОКА СПИСКА ==================== */
 ymaps[class*="search__suggest"] {
-  /* Убираем тень и скругления */
   box-shadow: none !important;
   border-radius: 0 !important;
-  
-  /* Отрезаем 2px для симметрии и защиты от дергания страницы */
   width: calc(100% - 2px) !important;
   max-width: calc(100% - 2px) !important;
-  
-  /* Ограничиваем высоту и добавляем скролл */
   overflow-y: auto !important;
   overflow-x: hidden !important;
   box-sizing: border-box !important;
-  
-  /* Для свайпа на телефоне */
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   touch-action: pan-y !important;
 }
 
 ymaps[class*="suggest-item"] {
-  /* Разрешаем переносы и рисуем разделительные линии */
   white-space: normal !important;
   border-bottom: 1px solid #dfe6ee !important;
   display: block !important;
@@ -194,7 +186,6 @@ ymaps[class*="suggest-item"] {
   line-height: 1.4 !important;
 }
 
-/* Достаем до внутренних элементов Яндекса, чтобы убрать троеточие (...) и разрешить перенос */
 ymaps[class*="suggest-item"] * {
   white-space: normal !important;
   text-overflow: clip !important;
@@ -218,17 +209,19 @@ ymaps[class*="suggest-item"]:last-child {
     <!-- 1. Поле ввода -->
     <input type="text" id="address-input" placeholder="Введите адрес..." autocomplete="off">
     
-    <!-- 2. Подложка (резерв) -->
+    <!-- 2. Карта — сразу под полем ввода, видна всем -->
+    <div id="map"></div>
+    
+    <!-- 3. Подложка (резерв) -->
     <div id="suggest-underlay"></div>
     
-    <!-- 3. Админский блок -->
+    <!-- 4. Админский блок -->
     <div class="admin-wrapper" id="admin-wrapper">
         <div id="header">
-            ID: <b id="header-id">...</b> <span class="version">v55</span><br>
+            ID: <b id="header-id">...</b> <span class="version">v56</span><br>
             🏙️ Город: <b id="header-city">...</b>
         </div>
-        <div id="diag">=== v55 ===</div>
-        <div id="map"></div>
+        <div id="diag">=== v56 ===</div>
         <div class="json-block">
             <div class="json-block-title">📋 JSON (только для админов):</div>
             <textarea id="json-output" readonly placeholder="Выберите точный адрес..."></textarea>
@@ -253,19 +246,16 @@ ymaps[class*="suggest-item"]:last-child {
 </div>
 
 <script>
-var SCRIPT_VERSION = 'v55';
-var PUZZLEBOT_TOKEN = 'oiteBLvPGR8E83oOxAZrecVWgt4Rop3U';
-var PUZZLEBOT_API = 'https://api.puzzle.bot/';
+var SCRIPT_VERSION = 'v56';
 var GEOCODER_KEY = 'c46e5925-729b-4dfe-be6a-5277d5ab39dc';
-var CORSPROXY_KEY = 'ef2f568a';
 var DEFAULT_USER_ID = '0000000000';
 var DEFAULT_CITY = 'Краснодар';
-var DIVIDER = '§§§§§';
 var NO_LOCALITY = 'не требуется';
 var NO_VALUE = 'отсутствует';
-var SEND_TIMEOUT_MS = 2000;
-var SEND_MAX_ATTEMPTS = 5;
-var SEND_RETRY_DELAY_MS = 500;
+var PARENT_TIMEOUT_MS = 10000;
+
+var FALLBACK_CENTER = [45.035470, 38.975313];
+var FAIL_HINT = ' 💡 Выберите точный адрес или ближайший из подсказок, если нужный адрес не находится.';
 
 var ADMIN_IDS = ['0000000000', '1509864197', '6177243586', '69206683'];
 
@@ -593,37 +583,6 @@ function abbreviateStreet(text) {
     return abbreviate(result);
 }
 
-function stripPrefixes(text) {
-    if (!text) return text;
-    var result = String(text).trim();
-    var iterations = 0;
-    var changed = true;
-    while (changed && iterations < 15) {
-        changed = false;
-        for (var i = 0; i < PREFIXES_TO_STRIP.length; i++) {
-            var newResult = result.replace(PREFIXES_TO_STRIP[i], '');
-            if (newResult !== result) {
-                result = newResult.trim();
-                changed = true;
-                break;
-            }
-        }
-        iterations++;
-    }
-    return result.trim();
-}
-
-var YANDEX_MAPS_PREFIX = 'https://yandex.ru/maps/?text=';
-
-function extractQueryFromUrl(url) {
-    if (!url) return NO_VALUE;
-    var s = String(url);
-    if (s.indexOf(YANDEX_MAPS_PREFIX) === 0) {
-        return s.substring(YANDEX_MAPS_PREFIX.length);
-    }
-    return s;
-}
-
 var diag = document.getElementById('diag');
 function diagLog(text, cls) {
     if (!diag) return;
@@ -641,9 +600,9 @@ if (tgUserId === '{{USER_ID_TEXT}}' || tgUserId === '{{USER_ID}}') tgUserId = ''
 if (selectedCity === '{{ADD_APP_CITY}}') selectedCity = '';
 
 var cityAreaArr = [];
+var cityCenterCoords = null;
 
 var selectedAddress = '';
-var selectedLink = '';
 var selectedCoords = null;
 var myMap = null;
 var myPlacemark = null;
@@ -651,8 +610,10 @@ var isTestMode = false;
 var isAdmin = false;
 var cityAreaRequested = false;
 var pendingResult = null;
+var lastResult = null;
 var pendingLocalityMode = 'не требуется';
 var suggestViewCreated = false;
+var savedTimeout = null;
 
 // Флаги готовности
 var isDataReady = false;
@@ -669,15 +630,6 @@ var addressWarning = document.getElementById('address-warning');
 var popupOverlay = document.getElementById('popup-overlay');
 var popupAddress = document.getElementById('popup-address');
 var popupText = document.getElementById('popup-text');
-function logHeights(tag) {
-    if (!isAdmin) return;
-    var underlay = document.getElementById('suggest-underlay');
-    var hInput = addressInput.offsetHeight;
-    var hWarning = addressWarning.offsetHeight;
-    var hUnderlay = underlay ? underlay.offsetHeight : 0;
-    var pos = getComputedStyle(addressWarning).position;
-    diagLog(tag + ' | Поле: ' + hInput + ' | Плашка: ' + hWarning + ' | Подложка: ' + hUnderlay + ' | Позиция: ' + pos, 'info');
-}
 diagLog(SCRIPT_VERSION + ' старт', 'info');
 
 // --- ЛОГИКА ЗАГРУЗКИ И ОТОБРАЖЕНИЯ ---
@@ -691,9 +643,9 @@ function showUI() {
             document.body.classList.add('admin-mode');
             if (headerId) headerId.textContent = tgUserId;
             if (headerCity) headerCity.textContent = selectedCity;
-            if (!myMap) initMap();
         }
         
+        if (!myMap) initMap();
         if (!suggestViewCreated) createSuggestView();
     }
 }
@@ -780,7 +732,7 @@ addressInput.addEventListener('input', function() {
             var inputBottom = addressInput.getBoundingClientRect().bottom;
             var availableSpace = window.innerHeight - inputBottom - 10;
             
-            // Если места больше 100px, применяем его. 
+            // Если места больше 100px, применяем его.
             // Иначе сработает резервное max-height: 250px из CSS
             if (availableSpace > 100) {
                 sList.style.maxHeight = availableSpace + 'px';
@@ -804,7 +756,6 @@ function processAddress(value) {
     var displayName = value; // если выбрано из подсказки, текст уже нормализован
     
     selectedAddress = displayName;
-    selectedLink = YANDEX_MAPS_PREFIX + encodeURIComponent(value);
 
     if (isAdmin) diagLog('👤 Выбран/введен адрес: ' + selectedAddress, 'info');
 
@@ -814,15 +765,19 @@ function processAddress(value) {
 
     ymaps.geocode(value, { results: 1 }).then(function (res) {
         var g = res.geoObjects.get(0);
-        if (!g) { showWarning('❌ Адрес не распознан', 'error'); return; }
+        if (!g) {
+            showWarning('❌ Адрес не распознан.' + FAIL_HINT, 'error');
+            if (jsonOutput) jsonOutput.value = '';
+            return;
+        }
         var coords = g.geometry.getCoordinates();
         selectedCoords = coords;
-        if (myMap && isAdmin) {
+        if (myMap) {
             myMap.setCenter(coords, 16);
             myPlacemark.geometry.setCoordinates(coords);
         }
 
-        fetchGeocoder(coords, { coords: coords, link: selectedLink }, function(result, err) {
+        fetchGeocoder(coords, function(result, err) {
             if (result) {
                 if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
                 if (copyBtn) copyBtn.disabled = false;
@@ -836,14 +791,26 @@ function processAddress(value) {
 function requestCityArea() {
     if (cityAreaRequested || !selectedCity) return;
     cityAreaRequested = true;
-    diagLog('[0] Запрос area для «' + selectedCity + '»...', 'new');
+    diagLog('[0] Запрос центра и area для «' + selectedCity + '»...', 'new');
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
         '&format=json&results=1&lang=ru_RU&geocode=' + encodeURIComponent(selectedCity);
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
         if (!data || !data.response || !data.response.GeoObjectCollection) { diagLog('[0] ❌ Нет response', 'err'); return; }
-        var m = data.response.GeoObjectCollection.featureMember;
-        if (!m || m.length === 0) { diagLog('[0] area не найдено', 'warn'); return; }
-        var comps = m[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
+        var members = data.response.GeoObjectCollection.featureMember;
+        if (!members || members.length === 0) { diagLog('[0] город не найден, центр по умолчанию', 'warn'); return; }
+
+        var geo = members[0].GeoObject;
+
+        // Центр города для карты
+        var pos = (geo.Point && geo.Point.pos) ? geo.Point.pos.split(' ') : null;
+        if (pos && pos.length === 2) {
+            cityCenterCoords = [parseFloat(pos[1]), parseFloat(pos[0])];
+            if (myMap) { myMap.setCenter(cityCenterCoords, 11); }
+            diagLog('[0] Центр города: ' + cityCenterCoords.join(', '), 'ok');
+        }
+
+        // area города
+        var comps = geo.metaDataProperty.GeocoderMetaData.Address.Components;
         cityAreaArr = [];
         for (var i = 0; i < comps.length; i++) {
             if (comps[i].kind === 'area') {
@@ -1026,7 +993,7 @@ function findOrient(coords, callback) {
     tryKind(0);
 }
 
-function handleGeocoderData(data, baseJson, onDone) {
+function handleGeocoderData(data, coords, onDone) {
     if (!data || !data.response || !data.response.GeoObjectCollection) { onDone(null, 'Нет данных'); return; }
     var members = data.response.GeoObjectCollection.featureMember;
     if (!members || members.length === 0) { onDone(null, 'Нет данных'); return; }
@@ -1053,7 +1020,6 @@ function handleGeocoderData(data, baseJson, onDone) {
     var otherArr = byKind.other || [];
     var metroArr = byKind.metroStation || [];
     var precision = meta.precision || '';
-    var coords = baseJson.coords, link = baseJson.link;
 
     var localityIsCity = false;
     for (var i = 0; i < localityArrRaw.length; i++) {
@@ -1118,7 +1084,7 @@ function handleGeocoderData(data, baseJson, onDone) {
         if (districtArr.length > 0) {
             var district = buildDistrict(districtArr.slice());
             if (houseStr.length > 0 && (streetStr.length > 0 || district.length > 0)) {
-                finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
+                finishSuccess(district, coords, streetStr, houseStr, precision, true, onDone);
             } else {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
             }
@@ -1129,7 +1095,7 @@ function handleGeocoderData(data, baseJson, onDone) {
                         finishFail('Не удалось найти ориентир. Уточните адрес.', onDone);
                         return;
                     }
-                    finishSuccess([prefix + orientArr.join(', ')], coords, link, streetStr, houseStr, precision, true, onDone);
+                    finishSuccess([prefix + orientArr.join(', ')], coords, streetStr, houseStr, precision, true, onDone);
                 });
             } else {
                 finishFail('Введите точный адрес (улица и номер дома).', onDone);
@@ -1142,17 +1108,15 @@ function handleGeocoderData(data, baseJson, onDone) {
     var areaMatches = areasMatch(areaArr);
 
     if (!areaMatches) {
-        if (houseStr.length === 0) { 
-    logHeights('ДО: Введите номер дома');
-    finishFail('Введите точный адрес (номер дома).', onDone); 
-    logHeights('ПОСЛЕ: Введите номер дома');
-    return; 
-}
+        if (houseStr.length === 0) {
+            finishFail('Введите точный адрес (номер дома).', onDone);
+            return;
+        }
         var streetMissing = (streetStr.length === 0);
         var localityStr = localityArr.length > 0 ? localityArr[0] : '';
-        var district = [];
-        if (districtArr.length > 0) district = buildDistrict(districtArr.slice());
-        finishSuccessOutside(district, coords, link, streetStr, houseStr, precision, localityStr, streetMissing, onDone);
+        var districtOutside = [];
+        if (districtArr.length > 0) districtOutside = buildDistrict(districtArr.slice());
+        finishSuccessOutside(districtOutside, coords, streetStr, houseStr, precision, localityStr, streetMissing, onDone);
         return;
     }
 
@@ -1164,24 +1128,24 @@ function handleGeocoderData(data, baseJson, onDone) {
         var values = [];
         localityNonCity.forEach(function(v) { values.push(v); });
         districtArr.forEach(function(v) { values.push(v); });
-        var district = buildDistrict(values);
-        if (houseStr.length > 0 && (streetStr.length > 0 || district.length > 0)) {
-            finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
+        var district2 = buildDistrict(values);
+        if (houseStr.length > 0 && (streetStr.length > 0 || district2.length > 0)) {
+            finishSuccess(district2, coords, streetStr, houseStr, precision, true, onDone);
         } else {
             finishFail('Введите точный адрес (улица и номер дома).', onDone);
         }
     } else {
         if (localityNonCity.length === 0) { finishFail('Не удалось определить ориентир.', onDone); return; }
-        var district = [localityNonCity.join(', ')];
+        var district3 = [localityNonCity.join(', ')];
         if (houseStr.length > 0) {
-            finishSuccess(district, coords, link, streetStr, houseStr, precision, true, onDone);
+            finishSuccess(district3, coords, streetStr, houseStr, precision, true, onDone);
         } else {
             finishFail('Введите адрес до конца (номер дома).', onDone);
         }
     }
 }
 
-function finishSuccess(district, coords, link, street, house, precision, isExact, onDone) {
+function finishSuccess(district, coords, street, house, precision, isExact, onDone) {
     var result = {
         coords: coords,
         in_city: true,
@@ -1189,17 +1153,14 @@ function finishSuccess(district, coords, link, street, house, precision, isExact
         street: street,
         house: house,
         is_exact: isExact,
-        precision: precision,
-        link: link
+        precision: precision
     };
     pendingLocalityMode = NO_LOCALITY;
-    result.link_search = buildSearchLink(result, NO_LOCALITY);
-    result.link_public = buildSearchLink(result, NO_LOCALITY, false);
     showPendingPopup(result, selectedAddress, false);
     onDone(result, null);
 }
 
-function finishSuccessOutside(district, coords, link, street, house, precision, localityStr, streetMissing, onDone) {
+function finishSuccessOutside(district, coords, street, house, precision, localityStr, streetMissing, onDone) {
     var result = {
         coords: coords,
         in_city: false,
@@ -1208,37 +1169,11 @@ function finishSuccessOutside(district, coords, link, street, house, precision, 
         street: street,
         house: house,
         is_exact: true,
-        precision: precision,
-        link: link
+        precision: precision
     };
     pendingLocalityMode = localityStr || NO_VALUE;
-    result.link_search = buildSearchLink(result, localityStr);
-    result.link_public = buildSearchLink(result, localityStr, false);
     showPendingPopup(result, selectedAddress, streetMissing);
     onDone(result, null);
-}
-
-function buildSearchLink(result, localityValue, includeHouse) {
-    var parts = [];
-    var loc = localityValue || '';
-    if (!loc || loc === NO_LOCALITY || loc === NO_VALUE) {
-        loc = selectedCity;
-    }
-    var cleanLoc = stripPrefixes(loc);
-    if (cleanLoc.length > 0) parts.push(cleanLoc);
-    if (result.district && result.district.length > 0 && result.district !== NO_VALUE) {
-        var cleanDist = stripPrefixes(result.district);
-        if (cleanDist.length > 0) parts.push(cleanDist);
-    }
-    if (result.street && result.street.length > 0 && result.street !== NO_VALUE) {
-        var cleanStreet = stripPrefixes(result.street);
-        if (cleanStreet.length > 0) parts.push(cleanStreet);
-    }
-    if (includeHouse !== false && result.house && result.house.length > 0 && result.house !== NO_VALUE) {
-        parts.push(result.house);
-    }
-    var query = parts.join(', ');
-    return YANDEX_MAPS_PREFIX + encodeURIComponent(query);
 }
 
 function showPendingPopup(result, addressText, streetMissing) {
@@ -1260,11 +1195,13 @@ function showPendingPopup(result, addressText, streetMissing) {
 }
 
 function finishFail(message, onDone) {
-    showWarning('❌ ' + message, 'error');
+    showWarning('❌ ' + message + FAIL_HINT, 'error');
+    if (jsonOutput) jsonOutput.value = '';
+    if (copyBtn) copyBtn.disabled = true;
     onDone(null, message);
 }
 
-function buildTransferLine(result) {
+function buildPayload(result) {
     var locality = pendingLocalityMode || NO_LOCALITY;
     if (locality !== NO_LOCALITY && locality !== NO_VALUE && locality.length > 0) {
         locality = abbreviate(locality);
@@ -1272,84 +1209,48 @@ function buildTransferLine(result) {
     var district = (result.district && result.district.length > 0) ? abbreviate(result.district) : NO_VALUE;
     var street = (result.street && result.street.length > 0) ? abbreviateStreet(result.street) : NO_VALUE;
     var house = (result.house && result.house.length > 0) ? result.house : NO_VALUE;
-    var linkQuery = (result.link && result.link.length > 0) ? extractQueryFromUrl(result.link) : NO_VALUE;
-    var linkSearchQuery = (result.link_search && result.link_search.length > 0) ? extractQueryFromUrl(result.link_search) : NO_VALUE;
-    var linkPublicQuery = (result.link_public && result.link_public.length > 0) ? extractQueryFromUrl(result.link_public) : NO_VALUE;
-    return [locality, district, street, house, linkQuery, linkSearchQuery, linkPublicQuery].join(DIVIDER);
-}
-
-function describePuzzleBotCode(code) {
-    var codes = {
-        0: 'успех',
-        1: 'неверный формат токена',
-        2: 'неверный формат метода',
-        3: 'токен не найден',
-        4: 'неизвестный метод',
-        40: 'не передан user_id или tg_chat_id',
-        100: 'внутренняя ошибка PuzzleBot',
-        102: 'ошибка вычисления expression',
-        104: 'переменная не найдена',
-        200: 'команда не найдена',
-        201: 'пользователь не найден',
-        202: 'чат не найден',
-        429: 'слишком много запросов'
+    return {
+        raw: selectedAddress,
+        locality: locality,
+        district: district,
+        street: street,
+        house: house
     };
-    return codes[code] || 'неизвестный код';
 }
 
-function fetchWithTimeout(url, timeoutMs) {
-    return new Promise(function(resolve, reject) {
-        var controller = null;
-        var timer = null;
-        try { controller = new AbortController(); }
-        catch (e) {
-            fetch(url, { method: 'GET' }).then(resolve).catch(reject);
-            return;
-        }
-        timer = setTimeout(function() {
-            try { controller.abort(); } catch (e) {}
-            reject(new Error('ТАЙМАУТ'));
-        }, timeoutMs);
-        fetch(url, { method: 'GET', signal: controller.signal })
-            .then(function(r) { clearTimeout(timer); resolve(r); })
-            .catch(function(err) { clearTimeout(timer); reject(err); });
-    });
-}
-
-function looksLikeCloudflareError(text) {
-    if (!text) return false;
-    var markers = ['cloudflare', 'Error code 525', 'Error code 52', 'SSL handshake', 'Attention Required'];
-    var lower = String(text).toLowerCase();
-    for (var i = 0; i < markers.length; i++) {
-        if (lower.indexOf(markers[i].toLowerCase()) !== -1) return true;
+function clearSavedTimeout() {
+    if (savedTimeout) {
+        clearTimeout(savedTimeout);
+        savedTimeout = null;
     }
-    return false;
 }
 
-function sendWithRetry(url) {
-    var attempt = 0;
-    function tryOnce() {
-        attempt++;
-        if (isAdmin) diagLog('🌐 Попытка ' + attempt + ' из ' + SEND_MAX_ATTEMPTS + '...', 'info');
-        return fetchWithTimeout(url, SEND_TIMEOUT_MS)
-            .then(function(r) { return r.text(); })
-            .then(function(text) {
-                if (looksLikeCloudflareError(text)) {
-                    if (isAdmin) diagLog('⚠️ CorsProxy вернул страницу Cloudflare (их сервер упал).', 'warn');
-                    throw new Error('CLOUDFLARE');
-                }
-                return text;
-            })
-            .catch(function(err) {
-                if (attempt >= SEND_MAX_ATTEMPTS) throw err;
-                if (isAdmin) diagLog('   Попытка ' + attempt + ' не удалась: ' + err.message, 'warn');
-                return new Promise(function(resolve) {
-                    setTimeout(resolve, SEND_RETRY_DELAY_MS);
-                }).then(tryOnce);
-            });
+// --- Приём ответа от родителя ---
+window.addEventListener('message', function(e) {
+    if (typeof e.data !== 'string') return;
+    var msg;
+    try { msg = JSON.parse(e.data); } catch (err) { return; }
+    if (!msg || msg.type !== 'pz-saved') return;
+
+    clearSavedTimeout();
+
+    if (msg.ok) {
+        if (isAdmin) diagLog('✅ Родитель подтвердил сохранение адреса', 'ok');
+        showWarning('✅ Адрес успешно сохранён. Нажмите «Далее» для продолжения.', 'ok');
+        if (jsonOutput && lastResult) jsonOutput.value = JSON.stringify(lastResult, null, 2);
+        if (copyBtn) copyBtn.disabled = false;
+        addressInput.value = '';
+        addressInput.disabled = true;
+        window.parent.postMessage(JSON.stringify({ type: 'pz-close' }), '*');
+        if (isAdmin) diagLog('📨 Сигнал закрытия отправлен родителю', 'ok');
+    } else {
+        if (isAdmin) diagLog('❌ Родитель сообщил об ошибке сохранения' + (msg.message ? ': ' + msg.message : ''), 'err');
+        showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+        pendingResult = null;
+        lastResult = null;
+        addressInput.disabled = false;
     }
-    return tryOnce();
-}
+});
 
 document.getElementById('popup-ok').addEventListener('click', function() {
     popupOverlay.classList.remove('visible');
@@ -1358,67 +1259,24 @@ document.getElementById('popup-ok').addEventListener('click', function() {
 
     var result = pendingResult;
     pendingResult = null;
+    lastResult = result;
 
-    var line = buildTransferLine(result);
-if (isAdmin) diagLog('📤 Строка (7 полей, 5–7 — только query): ' + line, 'new');
-window.parent.postMessage(JSON.stringify({ type: 'pz-address', data: line }), '*');
-if (isAdmin) diagLog('📨 Постмесседж родителю отправлен', 'ok');
-window.parent.postMessage(JSON.stringify({ type: 'pz-close' }), '*');      // ← НОВАЯ
-if (isAdmin) diagLog('📨 Сигнал закрытия попапа отправлен родителю', 'ok'); // ← НОВАЯ
-    var targetUrl = PUZZLEBOT_API +
-        '?token=' + encodeURIComponent(PUZZLEBOT_TOKEN) +
-        '&method=variableChange' +
-        '&variable=ADD_APP_TEST' +
-        '&expression=' + encodeURIComponent('"' + line + '"') +
-        '&user_id=' + encodeURIComponent(tgUserId) +
-        '&platform=' + encodeURIComponent(platform);
-
-    var proxyUrl = 'https://corsproxy.io/?key=' + CORSPROXY_KEY + '&url=' + encodeURIComponent(targetUrl);
+    var payload = buildPayload(result);
+    if (isAdmin) diagLog('📤 Отправляю родителю (адрес + 4 поля): ' + JSON.stringify(payload), 'new');
+    window.parent.postMessage(JSON.stringify({ type: 'pz-address', data: payload }), '*');
+    if (isAdmin) diagLog('📨 Постмесседж родителю отправлен', 'ok');
 
     showWarning('⏳ Сохраняем адрес...', 'warn');
 
-    sendWithRetry(proxyUrl)
-        .then(function(text) {
-            if (isAdmin) diagLog('📥 Ответ (сырой): ' + text, 'info');
-
-            var parsed;
-            try { parsed = JSON.parse(text); }
-            catch (e) {
-                if (isAdmin) diagLog('❌ Ответ не JSON. CorsProxy вернул что-то не то.', 'err');
-                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
-                return;
-            }
-
-            if (parsed.error) {
-                if (isAdmin) diagLog('❌ Ошибка CorsProxy: ' + parsed.error, 'err');
-                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
-                return;
-            }
-
-            if (parsed.code === undefined) {
-                if (isAdmin) diagLog('❌ В ответе нет поля code.', 'err');
-                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
-                return;
-            }
-
-            if (parsed.code !== 0) {
-                if (isAdmin) diagLog('❌ Ошибка PuzzleBot. Код: ' + parsed.code + ' (' + describePuzzleBotCode(parsed.code) + ')', 'err');
-                if (parsed.description) if (isAdmin) diagLog('   Описание: ' + parsed.description, 'err');
-                showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
-                return;
-            }
-
-            if (isAdmin) diagLog('✅ PuzzleBot ответил: код 0 (успех)', 'ok');
-            if (jsonOutput) jsonOutput.value = JSON.stringify(result, null, 2);
-            if (copyBtn) copyBtn.disabled = false;
-            showWarning('✅ Адрес успешно найден и сохранён. Нажмите «Далее» для продолжения.', 'ok');
-            addressInput.value = '';
-            addressInput.disabled = true;
-        })
-        .catch(function(err) {
-            if (isAdmin) diagLog('❌ Все ' + SEND_MAX_ATTEMPTS + ' попыток провалились. Последняя ошибка: ' + err.message, 'err');
-            showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
-        });
+    // Если родитель не ответил за PARENT_TIMEOUT_MS — показываем ошибку, ввод снова активен
+    clearSavedTimeout();
+    savedTimeout = setTimeout(function() {
+        savedTimeout = null;
+        if (isAdmin) diagLog('⏱ Родитель не ответил за ' + PARENT_TIMEOUT_MS + ' мс', 'err');
+        showWarning('❌ Ошибка сохранения адреса. Попробуйте выбрать адрес ещё раз.', 'error');
+        lastResult = null;
+        addressInput.disabled = false;
+    }, PARENT_TIMEOUT_MS);
 });
 
 document.getElementById('popup-cancel').addEventListener('click', function() {
@@ -1426,7 +1284,7 @@ document.getElementById('popup-cancel').addEventListener('click', function() {
     popupOverlay.style.display = 'none';
     pendingResult = null;
     if (isAdmin) diagLog('❌ Отменено', 'warn');
-    selectedAddress = ''; selectedLink = ''; selectedCoords = null;
+    selectedAddress = ''; selectedCoords = null;
     addressInput.value = '';
     addressInput.disabled = false;
     showWarning('', '');
@@ -1435,26 +1293,28 @@ document.getElementById('popup-cancel').addEventListener('click', function() {
 });
 
 function initMap() {
-    if (myMap || !isAdmin) return;
+    if (myMap) return;
     if (typeof ymaps === 'undefined' || !ymaps.Map) return;
     try {
+        var center = cityCenterCoords || FALLBACK_CENTER;
         myMap = new ymaps.Map('map', {
-            center: [45.035470, 38.975313], zoom: 12, controls: ['zoomControl']
+            center: center, zoom: 11, controls: ['zoomControl']
         });
         myPlacemark = new ymaps.Placemark(myMap.getCenter(), {}, { preset: 'islands#blueIcon' });
         myMap.geoObjects.add(myPlacemark);
+        if (isAdmin) diagLog('🗺 Карта создана, центр: ' + center.join(', '), 'ok');
     } catch(e) {
         diagLog('❌ Ошибка создания карты: ' + e.message, 'err');
     }
 }
 
-function fetchGeocoder(coords, baseJson, onDone) {
+function fetchGeocoder(coords, onDone) {
     var lon = coords[1], lat = coords[0];
     var url = 'https://geocode-maps.yandex.ru/1.x/?apikey=' + GEOCODER_KEY +
         '&format=json&results=1&lang=ru_RU&geocode=' + lon + ',' + lat;
     if (isAdmin) diagLog('🔄 Геокодер...', 'new');
     fetch(url).then(function(r){ return r.json(); }).then(function(data) {
-        handleGeocoderData(data, baseJson, onDone);
+        handleGeocoderData(data, coords, onDone);
     }).catch(function(e) {
         if (isAdmin) diagLog('❌ Ошибка: ' + e.message, 'err');
         onDone(null, e.message);
